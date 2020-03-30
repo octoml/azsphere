@@ -27,5 +27,6 @@ TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dmlc-core/inclu
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
 
 # Add MakeImage post-build command
+# Note: No space between multiple file names
 SET(ADDITIONAL_APPROOT_INCLUDES "build/test_data.bin;build/test_output.bin;build/test_graph.json;build/test_params.bin")
 INCLUDE("${AZURE_SPHERE_MAKE_IMAGE_FILE}")
