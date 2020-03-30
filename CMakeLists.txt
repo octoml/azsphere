@@ -2,7 +2,7 @@
 #  Licensed under the MIT License.
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.8)
-PROJECT(HelloWorld_HighLevelApp C)
+PROJECT(octoml_AS C)
 
 # object files including the model
 SET(OBJS
