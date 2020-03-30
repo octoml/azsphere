@@ -1,0 +1,7 @@
+# Ignore output directories
+/out/
+/install/
+build/
+
+# Ignore log files
+*.log
