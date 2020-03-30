@@ -21,9 +21,9 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME} applibs pthread gcc_s c)
 #)
 
 # Add TVM headers
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC /home/parallels/tvm/include)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC /home/parallels/tvm/3rdparty/dmlc-core/include)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC /home/parallels/tvm/3rdparty/dlpack/include)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/include)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dmlc-core/include)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
 
 # Add MakeImage post-build command
 SET(ADDITIONAL_APPROOT_INCLUDES "build/test_data.bin;build/test_output.bin;build/test_graph.json;build/test_params.bin")
