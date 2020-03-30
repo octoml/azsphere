@@ -1,6 +1,6 @@
 {
     "cmake.generator": "Ninja",
-    "cmake.buildDirectory": "${workspaceRoot}/build/${buildType}-${command:azuresphere.AzureSphereTargetApiSet}",
+    "cmake.buildDirectory": "${workspaceRoot}/build/",
     "cmake.buildToolArgs": [ "-v" ],
     "cmake.configureArgs": [ "--no-warn-unused-cli" ],
     "cmake.configureSettings": {
