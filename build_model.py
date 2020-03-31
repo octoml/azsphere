@@ -31,12 +31,17 @@ if local:
 else:
     TARGET = 'llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib'
 
-def build_module(opts):
+def build_module(opts, quanitization=False):
     dshape = (1, 3, 224, 224)
     from mxnet.gluon.model_zoo.vision import get_model
     block = get_model('mobilenet0.25', pretrained=True)
     shape_dict = {'data': dshape}
     mod, params = relay.frontend.from_mxnet(block, shape_dict)
+
+    # quanitization
+    if (quanitization):
+        mod = quantize(mod, params, data_aware=False)
+
     func = mod["main"]
     func = relay.Function(func.params, relay.nn.softmax(func.body), None, func.type_params, func.attrs)
 
@@ -107,17 +112,29 @@ def build_inputs(opts):
     with open(os.path.join(build_dir, "cat.bin"), "wb") as fp:
         fp.write(x.astype(np.float32).tobytes())
 
+def quantize(mod, params, data_aware):
+    if data_aware:
+        with relay.quantize.qconfig(calibrate_mode='kl_divergence', weight_scale='max'):
+            mod = relay.quantize.quantize(mod, params, dataset=calibrate_dataset())
+    else:
+        with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0):
+            mod = relay.quantize.quantize(mod, params)
+    return mod
+    
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--out-dir', default='.')
     parser.add_argument('-t', '--test', action='store_true')
+    parser.add_argument('-q', '--quantize', action='store_true')
     opts = parser.parse_args()
-
+    
     if opts.test:
         build_test_module(opts)
     else:
-        build_module(opts)
+        if (opts.quantize):
+            build_module(opts, quanitization=True)
+        else:
+            build_module(opts, quanitization=False)
         build_inputs(opts)
-        print("BUILD DONE!")
