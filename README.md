@@ -26,7 +26,12 @@ The sample requires the following hardware:
 
    `azsphere device enable-development`
 
-1. Clone this repository in home directory("~/").
+1. Clone this repository and TVM repository in home directory:
+```bash
+cd ~
+clone git@github.com:octoml/azure-sphere.git
+clone git clone --recursive https://github.com/apache/incubator-tvm.git tvm
+```
 
 ## Build and run the sample
 Here I explain main functionalities of the Makefile.
