@@ -63,7 +63,7 @@ typedef enum {
 
 int main(int argc, char **argv) {
   Log_Debug("Starting TVM Conv2d Test...\n");
-  assert(argc == 2 && "Usage: conv2d <conv2d_data.bin>");
+  assert(argc == 3 && "Usage: conv2d <conv2d_data.bin, conv2d_output.bin>");
   
   int fd = GPIO_OpenAsOutput(SAMPLE_LED, GPIO_OutputMode_PushPull, GPIO_Value_High);
   if (fd < 0) {
@@ -77,22 +77,29 @@ int main(int argc, char **argv) {
   char * params_data = (char *)(build_conv2d_params_bin);
   uint64_t params_size = build_conv2d_params_bin_len;
   int fid;
-  
+  off_t fs;
+
   struct timeval t0, t1, t2, t3, t4, t5;
   gettimeofday(&t0, 0);
 
   auto *handle = tvm_runtime_create(json_data, params_data, params_size);
   gettimeofday(&t1, 0);
 
-  // Read cat.bin
+  // Read data
   float input_storage[batch * in_ch * H * W];
   fid = Storage_OpenFileInImagePackage(argv[1]);
   if (fid == -1) {
     Log_Debug("Error: Openning %s failed!", argv[1]);
     goto failed;
   }
+  fs = lseek(fid, 0, SEEK_END);
+  if (fs == -1) {
+    Log_Debug("Error: File %s size!", argv[1]);
+    goto failed;
+  }
   lseek(fid, 0, SEEK_SET);
-  read(fid, &input_storage, batch * in_ch * H * W);
+  Log_Debug("%s size: %d", argv[1], (int)fs);
+  read(fid, &input_storage, fs);
   close(fid);
 
   DLTensor input;
@@ -129,20 +136,33 @@ int main(int argc, char **argv) {
   tvm_runtime_get_output(handle, 0, &output);
   gettimeofday(&t4, 0);
 
-  // float max_iter = -FLT_MAX;
-  // int32_t max_index = -1;
-  // for (auto i = 0; i < OUTPUT_LEN; ++i) {
-  //   if (output_storage[i] > max_iter) {
-  //     max_iter = output_storage[i];
-  //     max_index = i;
-  //   }
-  // }
-
   tvm_runtime_destroy(handle);
   gettimeofday(&t5, 0);
 
-  // Log_Debug("The maximum position in output vector is: %d, with max-value %f.\n",
-  //           max_index, max_iter);
+// Read expected output
+  float exp_out[batch * out_ch * H * W];
+  fid = Storage_OpenFileInImagePackage(argv[2]);
+  if (fid == -1) {
+    Log_Debug("Error: Openning %s failed!", argv[2]);
+    goto failed;
+  }
+  fs = lseek(fid, 0, SEEK_END);
+  if (fs == -1) {
+    Log_Debug("Error: File %s size!", argv[2]);
+    goto failed;
+  }
+  lseek(fid, 0, SEEK_SET);
+  Log_Debug("%s size: %d", argv[2], (int)fs);
+  read(fid, &exp_out, fs);
+  close(fid);
+
+  for (auto i = 0; i < batch*out_ch*H*W; ++i) {
+    assert(fabs(output_storage[i] - exp_out[i]) < 1e-5f);
+    if (fabs(output_storage[i] - exp_out[i]) >= 1e-5f) {
+      Log_Debug("got %f, expected %f\n", output_storage[i], exp_out[i]);
+    }
+  }
+
   Log_Debug("timing: %.2f ms (create), %.2f ms (set_input), %.2f ms (run), "
          "%.2f ms (get_output), %.2f ms (destroy)\n",
          (t1.tv_sec-t0.tv_sec)*1000000 + (t1.tv_usec-t0.tv_usec)/1000.f,

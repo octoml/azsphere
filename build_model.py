@@ -8,7 +8,7 @@ from tvm import te
 import logging
 import json
 import numpy as np
-import tensorflow as tf
+from topi.testing import conv2d_nchw_python
 
 local = False
 
@@ -65,10 +65,10 @@ def build_conv2d_module(opts):
                             out_layout='',
                             out_dtype='')
 
-    a_data = np.random.rand(batch, in_channel, 
-                            in_size, in_size).astype('float32')
-    w_data = np.full((out_channel, in_channel, 
-                            kernel, kernel), 1/(kernel*kernel)).astype('float32')
+    a_data = np.random.uniform(size=(batch, in_channel, 
+                            in_size, in_size)).astype('float32')
+    w_data = np.random.uniform(size=(out_channel, in_channel, 
+                            kernel, kernel)).astype('float32')
     func = relay.Function([A, W], B)
     params = {"W": w_data}
     graph, lib, params = relay.build_module.build(
@@ -78,15 +78,6 @@ def build_conv2d_module(opts):
     if not os.path.isdir(build_dir):
         os.makedirs(build_dir)
     
-    ## get TVM result
-    # tvm_out = run_conv2d_module(a_data, graph, lib, params, 'llvm --system-lib')
-    # tf_out = tf_conv2d(a_data, w_data)
-    # tf_out = np.reshape(tf_out, (batch, out_channel, in_size, in_size))
-    # print(tvm_out.shape)
-    # print(tf_out.shape)
-    # np.testing.assert_almost_equal(2.2222, 2.2221, decimal=4)
-    # np.testing.assert_almost_equal(tvm_out, tf_out, decimal=2)
-
     lib.save(os.path.join(build_dir, 'conv2d_model.o'))
     with open(os.path.join(build_dir, 'conv2d_graph.json'), 'w') as f_graph_json:
         f_graph_json.write(graph)
@@ -94,8 +85,19 @@ def build_conv2d_module(opts):
         f_params.write(relay.save_param_dict(params))
     with open(os.path.join(build_dir, "conv2d_data.bin"), "wb") as fp:
         fp.write(a_data.astype(np.float32).tobytes())
-    # with open(os.path.join(build_dir, "conv2d_output.bin"), "wb") as fp:
-    #     fp.write(tvm_out.astype(np.float32).tobytes())
+    
+    ## get TVM result on local machine
+    params = {"W": w_data}
+    local_target = 'llvm --system-lib'
+    graph, lib, params = relay.build_module.build(
+        tvm.IRModule.from_expr(func), target=local_target, params=params)
+    tvm_out = run_conv2d_module(a_data, graph, lib, params, target=local_target)
+    b_np = conv2d_nchw_python(a_data, w_data, (stride, stride), (pad, pad))
+    print("TVM Output: " + str(tvm_out.shape))
+    print("Numpy Output: " + str(b_np.shape))
+    np.testing.assert_allclose(b_np, tvm_out, rtol=1e-2)
+    with open(os.path.join(build_dir, "conv2d_output.bin"), "wb") as fp:
+        fp.write(tvm_out.astype(np.float32).tobytes())
 
 def run_conv2d_module(input, graph, lib, params, target):
     ctx = tvm.context(target, 0)
@@ -108,16 +110,6 @@ def run_conv2d_module(input, graph, lib, params, target):
     # get output
     out = module.get_output(0).asnumpy()
     return out
-
-
-def tf_conv2d(a, w):
-    ## Calculate output by tensor flow
-    # tf_a = tf.convert_to_tensor(np.reshape(a, (batch, in_size, in_size, in_channel)))
-    tf_a = a
-    tf_w = tf.convert_to_tensor(np.reshape(w, (kernel, kernel, in_channel, out_channel)))
-    tf_b = tf.nn.conv2d(tf_a, tf_w, strides=(stride, stride), padding="SAME", data_format='NCHW')
-    b_output = tf.Session().run(tf_b)
-    return b_output
 
 def build_test_module(opts):
     import numpy as np
