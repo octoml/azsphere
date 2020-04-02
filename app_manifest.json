@@ -3,7 +3,7 @@
   "Name": "octoml_AS",
   "ComponentId": "1689d8b2-c835-2e27-27ad-e894d6d15fa9",
   "EntryPoint": "/bin/app",
-  "CmdArgs": ["build/test_data.bin", "build/test_output.bin", "build/test_graph.json", "build/test_params.bin"],
+  "CmdArgs": ["build/conv2d_data.bin"],
   "Capabilities": {
     "Gpio": [ "$SAMPLE_LED" ]
   },
