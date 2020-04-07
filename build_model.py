@@ -5,7 +5,6 @@ import os
 import logging
 import json
 import numpy as np
-import pdb
 
 import tvm
 from tvm import te
@@ -13,6 +12,7 @@ from tvm import autotvm
 from tvm import relay
 import tvm.relay.testing
 from topi.testing import conv2d_nchw_python
+from tvm.autotvm.tuner import XGBTuner, GATuner, RandomTuner, GridSearchTuner
 
 local = False
 
@@ -238,8 +238,60 @@ def get_network(name, batch_size):
 
     return mod, params, input_shape, output_shape
 
-def tune_and_evaluate(opts):
-    target = tvm.target.create('llvm -device=arm_cpu -target=aarch64-linux-gnu')
+def tune_tasks(tasks,
+               measure_option,
+               tuner='xgb',
+               n_trial=1000,
+               early_stopping=None,
+               log_filename='tuning.log',
+               use_transfer_learning=True):
+    # create tmp log file
+    tmp_log_file = log_filename + ".tmp"
+    if os.path.exists(tmp_log_file):
+        os.remove(tmp_log_file)
+
+    pdb.set_trace()
+
+    for i, tsk in enumerate(reversed(tasks)):
+        # import pdb; pdb.set_trace()
+        prefix = "[Task %2d/%2d] " % (i+1, len(tasks))
+
+        # create tuner
+        if tuner == 'xgb' or tuner == 'xgb-rank':
+            tuner_obj = XGBTuner(tsk, loss_type='rank')
+        elif tuner == 'xgb_knob':
+            tuner_obj = XGBTuner(tsk, loss_type='rank', feature_type='knob')
+        elif tuner == 'ga':
+            tuner_obj = GATuner(tsk, pop_size=50)
+        elif tuner == 'random':
+            tuner_obj = RandomTuner(tsk)
+        elif tuner == 'gridsearch':
+            tuner_obj = GridSearchTuner(tsk)
+        else:
+            raise ValueError("Invalid tuner: " + tuner)
+
+        print(tmp_log_file)
+        if use_transfer_learning:
+            if os.path.isfile(tmp_log_file):
+                tuner_obj.load_history(autotvm.record.load_from_file(tmp_log_file))
+
+        # do tuning
+        tsk_trial = min(n_trial, len(tsk.config_space))
+        tuner_obj.tune(n_trial=tsk_trial,
+                       early_stopping=early_stopping,
+                       measure_option=measure_option,
+                       callbacks=[
+                           autotvm.callback.progress_bar(tsk_trial, prefix=prefix),
+                           autotvm.callback.log_to_file(tmp_log_file)
+                       ])
+
+    # pick best records to a cache file
+    autotvm.record.pick_best(tmp_log_file, log_filename)
+    os.remove(tmp_log_file)
+
+def tune_and_evaluate(opts, tuning_opt):
+    # target = tvm.target.create('llvm -device=arm_cpu -target=aarch64-linux-gnu')
+    target = TARGET
     # extract workloads from relay program
     print("Extract tasks...")
     # mod, params, input_shape, _ = get_network('resnet-18', batch_size=1)
@@ -248,7 +300,6 @@ def tune_and_evaluate(opts):
     tasks = autotvm.task.extract_from_program(mod['main'], target=target,
                                               params=params,
                                               ops=(relay.op.get("nn.conv2d"),))
-    pdb.set_trace()
 
     with relay.build_config(opt_level=3):
         graph, lib, params = relay.build_module.build(
@@ -267,8 +318,8 @@ def tune_and_evaluate(opts):
     #     fp.write(x_data.astype(np.float32).tobytes())
 
     # # run tuning tasks
-    # print("Tuning...")
-    # tune_tasks(tasks, **tuning_opt)
+    print("Tuning...")
+    tune_tasks(tasks, **tuning_opt)
 
     # # compile kernels with history best records
     # with autotvm.apply_history_best(log_file):
@@ -316,15 +367,56 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--test', action='store_true')
     parser.add_argument('--quantize', action='store_true')
     parser.add_argument('--conv2d', action='store_true')
-    parser.add_argument('--resnet', action='store_true')
+    parser.add_argument('--conv2dauto', action='store_true')
+    parser.add_argument('--x86', action='store_true')
     opts = parser.parse_args()
     
     if opts.test:
         build_test_module(opts)
     elif opts.conv2d:
         build_conv2d_module(opts)
-    elif opts.resnet:
-        tune_and_evaluate(opts)
+    elif opts.conv2dauto:
+        if opts.x86:
+            log_file = "%s.log" % ('conv2d-network')
+            tuning_option = {
+                'log_filename': log_file,
+                'tuner': 'random',
+                'n_trial': 1500,
+                'early_stopping': None,
+                'measure_option': autotvm.measure_option(
+                    builder=autotvm.LocalBuilder(),
+                    runner=autotvm.LocalRunner(
+                        number=10, repeat=1,
+                        min_repeat_ms=1000
+                    ),
+                ),
+                'use_transfer_learning' : False,
+            }
+        else:
+            # Also replace this with the device key in your tracker
+            device_key = 'AzureSphere'
+            # Set this to True if you use android phone
+            use_android = False
+            #### TUNING OPTION ####
+            log_file = "%s.%s.log" % (device_key, 'conv2d-network')
+            tuning_option = {
+                'log_filename': log_file,
+                'tuner': 'xgb',
+                'n_trial': 1500,
+                'early_stopping': 800,
+                'measure_option': autotvm.measure_option(
+                    builder=autotvm.LocalBuilder(),
+                    # runner=autotvm.RPCRunner(
+                    runner=autotvm.DebugRunner(
+                        # gdb="/opt/azurespheresdk/Sysroots/4/tools/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-musleabi/arm-poky-linux-musleabi-gdb",
+                        gdb="gdb",
+                        key=device_key, host='0.0.0.0', port=9190,
+                        number=5,
+                        timeout=10,
+                    ),
+                ),
+            }
+        tune_and_evaluate(opts, tuning_option)
     else:
         build_module(opts)
         build_inputs(opts)
