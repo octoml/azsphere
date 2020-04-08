@@ -22,11 +22,11 @@ else:
     TARGET = 'llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib'
 
 BATCH = 1
-IN_CHANNEL = 10
-OUT_CHANNEL = 20
-IN_SIZE = 14
-KERNEL = 3
-PAD = 1
+IN_CHANNEL = 3
+OUT_CHANNEL = 64
+IN_SIZE = 8
+KERNEL = 5
+PAD = 2
 STRIDE = 1
 
 def build_module(opts):

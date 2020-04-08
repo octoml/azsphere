@@ -55,10 +55,10 @@ typedef enum {
 } ExitCode;
 
 // Convolution
-#define H       14
-#define W       14
-#define in_ch   10
-#define out_ch  20
+#define H       8
+#define W       8
+#define in_ch   3
+#define out_ch  64
 #define batch   1
 
 int main(int argc, char **argv) {
@@ -89,16 +89,16 @@ int main(int argc, char **argv) {
   float input_storage[batch * in_ch * H * W];
   fid = Storage_OpenFileInImagePackage(argv[1]);
   if (fid == -1) {
-    Log_Debug("Error: Openning %s failed!", argv[1]);
+    Log_Debug("Error: Openning %s failed!\n", argv[1]);
     goto failed;
   }
   fs = lseek(fid, 0, SEEK_END);
   if (fs == -1) {
-    Log_Debug("Error: File %s size!", argv[1]);
+    Log_Debug("Error: File %s size!\n", argv[1]);
     goto failed;
   }
   lseek(fid, 0, SEEK_SET);
-  Log_Debug("%s size: %d", argv[1], (int)fs);
+  Log_Debug("%s size: %d\n", argv[1], (int)fs);
   read(fid, &input_storage, fs);
   close(fid);
 
@@ -143,16 +143,16 @@ int main(int argc, char **argv) {
   float exp_out[batch * out_ch * H * W];
   fid = Storage_OpenFileInImagePackage(argv[2]);
   if (fid == -1) {
-    Log_Debug("Error: Openning %s failed!", argv[2]);
+    Log_Debug("Error: Openning %s failed!\n", argv[2]);
     goto failed;
   }
   fs = lseek(fid, 0, SEEK_END);
   if (fs == -1) {
-    Log_Debug("Error: File %s size!", argv[2]);
+    Log_Debug("Error: File %s size!\n", argv[2]);
     goto failed;
   }
   lseek(fid, 0, SEEK_SET);
-  Log_Debug("%s size: %d", argv[2], (int)fs);
+  Log_Debug("%s size: %d\n", argv[2], (int)fs);
   read(fid, &exp_out, fs);
   close(fid);
 
@@ -165,11 +165,11 @@ int main(int argc, char **argv) {
 
   Log_Debug("timing: %.2f ms (create), %.2f ms (set_input), %.2f ms (run), "
          "%.2f ms (get_output), %.2f ms (destroy)\n",
-         (t1.tv_sec-t0.tv_sec)*1000000 + (t1.tv_usec-t0.tv_usec)/1000.f,
-         (t2.tv_sec-t1.tv_sec)*1000000 + (t2.tv_usec-t1.tv_usec)/1000.f,
-         (t3.tv_sec-t2.tv_sec)*1000000 + (t3.tv_usec-t2.tv_usec)/1000.f,
-         (t4.tv_sec-t3.tv_sec)*1000000 + (t4.tv_usec-t3.tv_usec)/1000.f,
-         (t5.tv_sec-t4.tv_sec)*1000000 + (t5.tv_usec-t4.tv_usec)/1000.f);
+         (t1.tv_sec-t0.tv_sec)*1000 + (t1.tv_usec-t0.tv_usec)/1000.f,
+         (t2.tv_sec-t1.tv_sec)*1000 + (t2.tv_usec-t1.tv_usec)/1000.f,
+         (t3.tv_sec-t2.tv_sec)*1000 + (t3.tv_usec-t2.tv_usec)/1000.f,
+         (t4.tv_sec-t3.tv_sec)*1000 + (t4.tv_usec-t3.tv_usec)/1000.f,
+         (t5.tv_sec-t4.tv_sec)*1000 + (t5.tv_usec-t4.tv_usec)/1000.f);
   
   const struct timespec sleepTime = {.tv_sec = 1, .tv_nsec = 0};
   while (true) {
