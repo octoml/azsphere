@@ -19,6 +19,12 @@
         "memory.h": "c",
         "iostream": "c",
         "random": "c",
-        "memory": "cpp"
+        "memory": "cpp",
+        "malloc.h": "c",
+        "networking.h": "c",
+        "c_runtime_api.h": "c",
+        "*.def": "cpp",
+        "bitset": "cpp",
+        "functional": "cpp"
     }
 }

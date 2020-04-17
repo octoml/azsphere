@@ -5,7 +5,12 @@
   "EntryPoint": "/bin/app",
   "CmdArgs": ["build/conv2d_data.bin", "build/conv2d_output.bin"],
   "Capabilities": {
-    "Gpio": [ "$SAMPLE_LED" ]
+    "Gpio": [ "$SAMPLE_LED" ],
+    "AllowedTcpServerPorts": [ 11000 ],
+    "NetworkConfig": true,
+    "SntpService": true,
+    "DhcpService": true,
+    "AllowedConnections": [ "192.168.0.10"]
   },
   "ApplicationType": "Default"
 }
