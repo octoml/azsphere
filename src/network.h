@@ -20,14 +20,6 @@ static int OpenIpV4Socket(in_addr_t ipAddr, uint16_t port, int sockType, ExitCod
 static void ReportError(const char *desc);
 static ExitCode CheckNetworkStatus(void);
 
-/// <summary>
-///     Configure the specified network interface with a static IP address.
-/// </summary>
-/// <param name="interfaceName">
-///     The name of the network interface to be configured.
-/// </param>
-/// <returns>ExitCode_Success if the function was successful; another ExitCode
-/// value otherwise.</returns>
 static ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName)
 {
     Networking_IpConfig ipConfig;
@@ -55,33 +47,6 @@ static ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName)
     return ExitCode_Success;
 }
 
-/// <summary>
-///     Set up SIGTERM termination handler, set up epoll event handling, configure network
-///     interface, start SNTP server and TCP server.
-/// </summary>
-/// <returns>0 on success, or -1 on failure</returns>
-// static ExitCode InitializeAndLaunchServers(void)
-// {
-//     // struct sigaction action;
-//     // memset(&action, 0, sizeof(struct sigaction));
-//     // action.sa_handler = TerminationHandler;
-//     // sigaction(SIGTERM, &action, NULL);
-
-//     epollFd = CreateEpollFd();
-//     if (epollFd < 0) {
-//         return ExitCode_InitLaunch_Epoll;
-//     }
-
-//     // Check network interface status at the specified period until it is ready.
-//     struct timespec checkInterval = {1, 0};
-//     timerFd = CreateTimerFdAndAddToEpoll(epollFd, &checkInterval, &timerEventData, EPOLLIN);
-//     if (timerFd < 0) {
-//         return ExitCode_InitLaunch_Timer;
-//     }
-
-//     return ExitCode_Success;
-// }
-
 static int OpenIpV4Socket(in_addr_t ipAddr, uint16_t port, int sockType, ExitCode *callerExitCode)
 {
     int localFd = -1;
@@ -95,16 +60,6 @@ static int OpenIpV4Socket(in_addr_t ipAddr, uint16_t port, int sockType, ExitCod
             *callerExitCode = ExitCode_OpenIpV4_Socket;
             break;
         }
-
-        // Enable rebinding soon after a socket has been closed.
-        // int enableReuseAddr = 1;
-        // int r = setsockopt(localFd, SOL_SOCKET, SO_REUSEADDR, &enableReuseAddr,
-        //                    sizeof(enableReuseAddr));
-        // if (r != 0) {
-        //     ReportError("setsockopt/SO_REUSEADDR");
-        //     *callerExitCode = ExitCode_OpenIpV4_SetSockOpt;
-        //     break;
-        // }
 
         struct sockaddr_in serv_addr; 
         serv_addr.sin_family = AF_INET; 
@@ -126,24 +81,7 @@ static int OpenIpV4Socket(in_addr_t ipAddr, uint16_t port, int sockType, ExitCod
 
         char *hello = "Hello from client";
         send(localFd , hello , strlen(hello) , 0); 
-        //connect to socket
 
-
-        // Bind to a well-known IP address.
-        // struct sockaddr_in addr;
-        // memset(&addr, 0, sizeof(addr));
-        // addr.sin_family = AF_INET;
-        // addr.sin_addr.s_addr = ipAddr;
-        // addr.sin_port = htons(port);
-
-        // r = bind(localFd, (const struct sockaddr *)&addr, sizeof(addr));
-        // if (r != 0) {
-        //     ReportError("bind");
-        //     *callerExitCode = ExitCode_OpenIpV4_Bind;
-        //     break;
-        // }
-
-        // Port opened successfully.
         retFd = localFd;
         localFd = -1;
     } while (0);
@@ -158,11 +96,6 @@ static void ReportError(const char *desc)
     Log_Debug("ERROR: TCP server: \"%s\", errno=%d (%s)\n", desc, errno, strerror(errno));
 }
 
-
-/// <summary>
-///     Check network status and display information about all available network interfaces.
-/// </summary>
-/// <returns>0 on success, or -1 on failure</returns>
 static ExitCode CheckNetworkStatus(void)
 {
     // Ensure the necessary network interface is enabled.
