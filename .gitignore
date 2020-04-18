@@ -5,3 +5,7 @@ build/
 
 # Ignore log files
 *.log
+
+# python
+__pycache__
+.pkl*
