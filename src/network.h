@@ -6,39 +6,31 @@
 
 #include "exitcode.h"
 
-// Ethernet / TCP server settings.
-static struct in_addr localServerIpAddress;
-static struct in_addr subnetMask;
-static struct in_addr gatewayIpAddress;
-static const uint16_t LocalTcpServerPort = 11000;
-static int serverBacklogSize = 3;
-static const char NetworkInterface[] = "eth0";
-static bool isNetworkStackReady = false;
-
-static ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName);
-static int OpenIpV4Socket(in_addr_t ipAddr, uint16_t port, int sockType, ExitCode *callerExitCode);
 static void ReportError(const char *desc);
-static ExitCode CheckNetworkStatus(void);
 
-static ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName)
+
+static ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName,
+                                                      char * ipAddress,
+                                                      char * subnet,
+                                                      char * gateway 
+                                                     )
 {
     Networking_IpConfig ipConfig;
-    Networking_IpConfig_Init(&ipConfig);
-    if (inet_aton("192.168.0.20", &localServerIpAddress) <= 0) {
-        ReportError("StaticIP: localServerIpAddress\n");
-    }
-    if (inet_aton("255.255.255.0", &subnetMask) <= 0) {
-        ReportError("StaticIP: subnetMask\n");
-    }
-    if (inet_aton("192.168.0.1", &gatewayIpAddress) <= 0) {
-        ReportError("StaticIP: gatewayIpAddress\n");
-    }
-    Networking_IpConfig_EnableStaticIp(&ipConfig, localServerIpAddress, subnetMask,
-                                       gatewayIpAddress);
+    struct in_addr localIPAddress;
+    struct in_addr subnetMask;
+    struct in_addr gatewayIPAddress;
 
-    int result = Networking_IpConfig_Apply(interfaceName, &ipConfig);
+    Networking_IpConfig_Init(&ipConfig);
+    inet_aton(ipAddress, &localIPAddress);
+    inet_aton(subnet, &subnetMask);
+    inet_aton(gateway, &gatewayIPAddress);
+
+    Networking_IpConfig_EnableStaticIp(&ipConfig, localIPAddress, subnetMask,
+                                       gatewayIPAddress);
+
+    int r = Networking_IpConfig_Apply(interfaceName, &ipConfig);
     Networking_IpConfig_Destroy(&ipConfig);
-    if (result != 0) {
+    if (r != 0) {
         Log_Debug("ERROR: Networking_IpConfig_Apply: %d (%s)\n", errno, strerror(errno));
         return ExitCode_ConfigureStaticIp_IpConfigApply;
     }
@@ -47,14 +39,14 @@ static ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName)
     return ExitCode_Success;
 }
 
-static int OpenIpV4Socket(in_addr_t ipAddr, uint16_t port, int sockType, ExitCode *callerExitCode)
+int OpenIpV4Socket(char * ip, uint16_t port, int sockType, ExitCode *callerExitCode)
 {
     int localFd = -1;
     int retFd = -1;
 
     do {
-        // Create a TCP / IPv4 socket. This will form the listen socket.
-        localFd = socket(AF_INET, SOCK_STREAM, /* protocol */ 0);
+        // Create a TCP / IPv4 socket.
+        localFd = socket(AF_INET, sockType, /* protocol */ 0);
         if (localFd < 0) {
             ReportError("socket");
             *callerExitCode = ExitCode_OpenIpV4_Socket;
@@ -63,14 +55,8 @@ static int OpenIpV4Socket(in_addr_t ipAddr, uint16_t port, int sockType, ExitCod
 
         struct sockaddr_in serv_addr; 
         serv_addr.sin_family = AF_INET; 
-        serv_addr.sin_port = htons(11000);
-        serv_addr.sin_addr.s_addr = inet_addr("192.168.0.10");
-        // if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0)
-        // {
-        //     ReportError("INET");
-        //     break;
-        // }
-        // int r = connect(localFd, const &serv_addr, sizeof(serv_addr));
+        serv_addr.sin_port = htons(port);
+        serv_addr.sin_addr.s_addr = inet_addr(ip);
         int r = connect(localFd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
         if (r != 0) {
@@ -79,14 +65,11 @@ static int OpenIpV4Socket(in_addr_t ipAddr, uint16_t port, int sockType, ExitCod
             break;
         }
 
-        char *hello = "Hello from client";
-        send(localFd , hello , strlen(hello) , 0); 
-
         retFd = localFd;
         localFd = -1;
     } while (0);
 
-    // close(localFd);
+    close(localFd);
 
     return retFd;
 }
@@ -96,10 +79,9 @@ static void ReportError(const char *desc)
     Log_Debug("ERROR: TCP server: \"%s\", errno=%d (%s)\n", desc, errno, strerror(errno));
 }
 
-static ExitCode CheckNetworkStatus(void)
-{
+ExitCode NetworkEnable(char * interface) {
     // Ensure the necessary network interface is enabled.
-    int result = Networking_SetInterfaceState(NetworkInterface, true);
+    int result = Networking_SetInterfaceState(interface, true);
     if (result != 0) {
         if (errno == EAGAIN) {
             Log_Debug("INFO: The networking stack isn't ready yet, will try again later.\n");
@@ -107,11 +89,29 @@ static ExitCode CheckNetworkStatus(void)
         } else {
             Log_Debug(
                 "ERROR: Networking_SetInterfaceState for interface '%s' failed: errno=%d (%s)\n",
-                NetworkInterface, errno, strerror(errno));
+                interface, errno, strerror(errno));
             return ExitCode_CheckStatus_SetInterfaceState;
         }
     }
-    isNetworkStackReady = true;
+    return ExitCode_Success;
+}
+
+static ExitCode CheckNetworkStatus(char * interface)
+{
+    // Ensure the necessary network interface is enabled.
+    int result = Networking_SetInterfaceState(interface, true);
+    if (result != 0) {
+        if (errno == EAGAIN) {
+            Log_Debug("INFO: The networking stack isn't ready yet, will try again later.\n");
+            return ExitCode_Success;
+        } else {
+            Log_Debug(
+                "ERROR: Networking_SetInterfaceState for interface '%s' failed: errno=%d (%s)\n",
+                interface, errno, strerror(errno));
+            return ExitCode_CheckStatus_SetInterfaceState;
+        }
+    }
+    // isNetworkStackReady = true;
 
     // Display total number of network interfaces.
     ssize_t count = Networking_GetInterfaceCount();
