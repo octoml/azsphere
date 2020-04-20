@@ -46,7 +46,7 @@
 // #include "bundle.h"
 // #include "build/conv2d_graph.json.c"
 // #include "build/conv2d_params.bin.c"
-#include "network.h"
+#include "src/network.h"
 
 // Convolution
 #define H       8
@@ -58,7 +58,10 @@
 // static volatile int fd;
 // static void TerminationHandler(int signo);
 static ExitCode exitCode = ExitCode_Success;
-
+static char interface[] = "eth0";
+static uint16_t serverPort = 11000;
+static char serverIP[] = "192.168.0.10";
+static char id[4];
 // static void TerminationHandler(int signo) {
 //   // Log_Debug("Termination Handler\n");
 //   GPIO_SetValue(fd, GPIO_Value_High);
@@ -67,8 +70,13 @@ static ExitCode exitCode = ExitCode_Success;
 
 int main(int argc, char **argv) {
   Log_Debug("Starting TVM Conv2d Test...\n");
-  // assert(argc == 3 && "Usage: conv2d <conv2d_data.bin, conv2d_output.bin>");
   
+  // char * json_data = (char *)(build_conv2d_graph_json);
+  // char * params_data = (char *)(build_conv2d_params_bin);
+  // uint64_t params_size = build_conv2d_params_bin_len;
+  int fid;
+  off_t fs;
+
   int fd = GPIO_OpenAsOutput(SAMPLE_LED, GPIO_OutputMode_PushPull, GPIO_Value_High);
   if (fd < 0) {
     Log_Debug(
@@ -76,41 +84,41 @@ int main(int argc, char **argv) {
         strerror(errno), errno);
     return ExitCode_Main_Led;
   }
-  GPIO_SetValue(fd, GPIO_Value_Low);
+  GPIO_SetValue(fd, GPIO_Value_High);
 
-  // int err = Networking_SetInterfaceState(NetworkInterface, true);
-  // if (err == -1) {
-  //   Log_Debug("Error setting interface state %d\n",errno);
-  //   goto endApp;
-  // }
-  CheckNetworkStatus();
 
-  exitCode = ConfigureNetworkInterfaceWithStaticIp(NetworkInterface);
-  int sockType = SOCK_STREAM;
+  exitCode = NetworkEnable(interface);
+  exitCode = ConfigureNetworkInterfaceWithStaticIp(interface,
+                                                 "192.168.0.20",
+                                                 "255.255.255.0",
+                                                 "192.168.0.1");
 
-  static struct in_addr serverIP;
-  inet_aton("10.42.0.1", &serverIP);
-  OpenIpV4Socket(serverIP.s_addr, LocalTcpServerPort, sockType, &exitCode);
+  int socket = OpenIpV4Socket(serverIP, serverPort, SOCK_STREAM, &exitCode);
 
-  // Networking_IpConfig ipConfig;
-  // struct in_addr ipAddress = {.s_addr=inet_addr("10.42.0.20")};
-  // struct in_addr subnetMask = {.s_addr=inet_addr("255.255.255.0")};
-  // struct in_addr gatewayAddress = {.s_addr=inet_addr("10.42.0.1")};
-  // Networking_IpConfig_Init(&ipConfig);
-  // Networking_IpConfig_EnableStaticIp(&ipConfig, ipAddress, subnetMask, gatewayAddress);
-  // Networking_IpConfig_Apply("eth0", &ipConfig);
+  char *hello = "Mehrdad Okay!";
+  send(socket , hello , strlen(hello) , 0);
 
+  // Read id
+  fid = Storage_OpenFileInImagePackage("build/id.bin");
+  if (fid == -1) {
+    Log_Debug("Error: Openning %s failed!\n", argv[1]);
+    goto endApp;
+  }
+  fs = lseek(fid, 0, SEEK_END);
+  if (fs == -1) {
+    Log_Debug("Error: File %s size!\n", argv[1]);
+    goto endApp;
+  }
+  lseek(fid, 0, SEEK_SET);
+  read(fid, &id, fs);
+  close(fid);
 
 //   struct sigaction action;
 //   memset(&action, 0, sizeof(struct sigaction));
 //   action.sa_handler = TerminationHandler;
 //   sigaction(SIGKILL, &action, NULL);
 
-//   char * json_data = (char *)(build_conv2d_graph_json);
-//   char * params_data = (char *)(build_conv2d_params_bin);
-//   uint64_t params_size = build_conv2d_params_bin_len;
-//   int fid;
-//   off_t fs;
+
 
 //   struct timeval t0, t1, t2, t3, t4, t5;
 //   gettimeofday(&t0, 0);
