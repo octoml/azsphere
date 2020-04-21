@@ -1,7 +1,6 @@
 import shutil
 import os
 import tvm
-
 from azure import AzureSphere
 
 # build model and create imagepackage
@@ -22,12 +21,14 @@ def build(export_path, schedule_path):
     target = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
     # target = tvm.target.create('llvm -device=arm_cpu -target=arm-linux-gnueabihf')
     for ii in range(len(files)):
+        if ii>5:
+            break
         tmp = AzureSphere(key=ii,
                           schedule_path=files[ii],
                           target=target)
         tmp.build()
         tmp.export(export_path)
-        tmp.dependency(config_path="config", src_path="src")
+        tmp.dependency(config_path='config', src_path='../')
         as_instances.append(tmp)
     return as_instances
 
@@ -37,7 +38,7 @@ def run():
 
 if __name__ == '__main__':
     print("main")
-    items = build(export_path="lib", 
-          schedule_path="/home/parallels/tvm/apps/npi/history")
+    items = build(export_path="build", 
+          schedule_path="/home/parallels/azure-sphere/tuning/npi/history")
     for ii in range(len(items)):
         items[ii].package()

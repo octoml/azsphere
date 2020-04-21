@@ -3,9 +3,14 @@
   "Name": "octoml_AS",
   "ComponentId": "1689d8b2-c835-2e27-27ad-e894d6d15fa9",
   "EntryPoint": "/bin/app",
-  "CmdArgs": ["data.bin", "output.bin"],
+  "CmdArgs": [""],
   "Capabilities": {
-    "Gpio": [ "$SAMPLE_LED" ]
+    "Gpio": [ "$SAMPLE_LED" ],
+    "AllowedTcpServerPorts": [ 11000 ],
+    "NetworkConfig": true,
+    "SntpService": true,
+    "DhcpService": true,
+    "AllowedConnections": [ "192.168.0.10"]
   },
   "ApplicationType": "Default"
 }

@@ -9,11 +9,10 @@ import subprocess
 import shutil
 
 azure_src = [
-	"bundle.h",
 	"bundle_static.c",
-	"conv2d.c",
+	"conv2d_network.c",
 	"runtime.c",
-	"applibs_versions.h"
+	# "applibs_versions.h"
 ]
 
 def build_model(schedule_log, batch_size=1, target=None):
@@ -100,20 +99,29 @@ class AzureSphere():
 		self.exportPath = os.path.join(path, self.libPath)
 		if not os.path.exists(self.exportPath):
 			os.makedirs(self.exportPath)
+
+		build_dir = self.exportPath + '/build'
+		if not os.path.exists(build_dir):
+			os.makedirs(build_dir)
 		
-		self.lib.save(os.path.join(self.exportPath, 'model.o'))
-		with open(os.path.join(self.exportPath, 'graph.json'), 'w') as f_graph_json:
+		self.lib.save(os.path.join(build_dir, 'model.o'))
+		with open(os.path.join(build_dir, 'conv2d_graph.json'), 'w') as f_graph_json:
 			f_graph_json.write(self.graph)
-		with open(os.path.join(self.exportPath, 'params.bin'), 'wb') as f_params:
+		with open(os.path.join(build_dir, 'conv2d_params.bin'), 'wb') as f_params:
 			f_params.write(relay.save_param_dict(self.params))
-		with open(os.path.join(self.exportPath, "data.bin"), "wb") as fp:
+		with open(os.path.join(build_dir, 'conv2d_data.bin'), "wb") as fp:
 			fp.write(self.dataIn.astype(np.float32).tobytes())
-		with open(os.path.join(self.exportPath, "output.bin"), "wb") as fp:
+		with open(os.path.join(build_dir, 'conv2d_output.bin'), "wb") as fp:
 			fp.write(self.dataOut.astype(np.float32).tobytes())
+
+		##generate ID
+		uint_key = np.uint32(self.key)
+		with open(os.path.join(build_dir, 'id.bin'), "wb") as fp:
+			fp.write(uint_key.astype(np.uint32).tobytes())
 
 	def dependency(self, config_path, src_path):
 		if not os.path.exists(config_path) or \
-		   not os.path.exists(src_path):
+			not os.path.exists(src_path):
 			raise FileNotFoundError
 
 		# config files

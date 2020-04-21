@@ -8,6 +8,8 @@ CMAKE_FLAGS = -G "Ninja" \
 	-DCMAKE_MAKE_PROGRAM="ninja" \
 	./
 
+build_dir := build
+
 debug_init:
 	azsphere device sideload delete
 
@@ -15,15 +17,15 @@ connect:
 	sudo /opt/azurespheresdk/Tools/azsphere_connect.sh
 
 # build image package
-imagepackage: model.o graph.json.c params.bin.c data.bin output.bin
+imagepackage: $(build_dir)/model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c $(build_dir)/conv2d_data.bin $(build_dir)/conv2d_output.bin $(build_dir)/id.bin
 	@mkdir -p $(@D)
 	cmake $(CMAKE_FLAGS) && ninja
 
 # Serialize files
-graph.json.c: graph.json
+$(build_dir)/conv2d_graph.json.c: $(build_dir)/conv2d_graph.json
 	xxd -i $^  > $@
 
-params.bin.c: params.bin
+$(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
 	xxd -i $^  > $@
 
 clean:
