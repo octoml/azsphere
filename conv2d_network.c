@@ -35,7 +35,7 @@
 #include "bundle.h"
 #include "build/conv2d_graph.json.c"
 #include "build/conv2d_params.bin.c"
-#include "src/network.h"
+#include "network.h"
 
 // Convolution
 #define H       8

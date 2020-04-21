@@ -6,7 +6,8 @@ PROJECT(octoml_AS C)
 
 # Set for unit test or demo
 OPTION(TEST "Is this test?" OFF)
-OPTION(CONV2D "Is this conv2d?" ON)
+OPTION(CONV2D "Is this conv2d?" OFF)
+OPTION(CONV2D_NET "Is this conv2d network?" ON)
 OPTION(DEMO "Is this demo?" OFF)
 
 # object files including the model
@@ -18,12 +19,16 @@ elseif(CONV2D)
   message("INFO: Building Conv2d!")
   SET(CFILES conv2d.c bundle_static.c)
   SET(OBJS build/conv2d_model.o)
+elseif(CONV2D_NET)
+  message("INFO: Building Conv2d Network!")
+  SET(CFILES conv2d_network.c bundle_static.c)
+  SET(OBJS build/conv2d_model.o)
 elseif(DEMO)
   message("INFO: Building demo!")
   SET(CFILES demo.c bundle_static.c)
   SET(OBJS build/model.o)
 else()
-  SET(CFILES mmap_test.c)
+  SET(CFILES hello.c)
   SET(OBJS "")
 endif()
 
@@ -43,6 +48,8 @@ TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/include)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/src)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dmlc-core/include)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
+# Project Headers
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ./include)
 
 # Add MakeImage post-build command
 # Note: No space between multiple file names
@@ -50,6 +57,8 @@ if(TEST)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/test_data.bin;build/test_output.bin;build/test_graph.json;build/test_params.bin")
 elseif(CONV2D)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin")
+elseif(CONV2D_NET)
+  SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin;build/id.bin")
 elseif(DEMO)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/cat.bin")
 else()
