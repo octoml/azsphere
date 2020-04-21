@@ -6,6 +6,13 @@
 
 #include "exitcode.h"
 
+
+typedef enum {
+    Message_START       = 0,
+    Message_TIME        = 1,
+    Message_RESULT      = 2,
+} Message;
+
 static void ReportError(const char *desc);
 
 
@@ -193,6 +200,47 @@ static ExitCode CheckNetworkStatus(char * interface)
     free(interfaces);
 
     return ExitCode_Success;
+}
+
+int message(char * id, Message type, char * message) {
+    int len = 0;
+    message[0] = id[0];
+    message[1] = id[1];
+    message[2] = id[2];
+    message[3] = id[3];
+    len += 4;
+
+    switch (type)
+    {
+    case Message_START:
+        message[4] = ',';
+        message[5] = 'S';
+        message[6] = 'T';
+        message[7] = 'A';
+        message[8] = 'R';
+        message[9] = 'T';
+        message[10] = '\n';
+        len += 7;
+        break;
+    case Message_TIME:
+        message[4] = ',';
+        message[5] = 'T';
+        message[6] = 'I';
+        message[7] = 'M';
+        message[8] = 'E';
+        len += 5;
+        break;
+    case Message_RESULT:
+        message[4] = ',';
+        message[5] = 'R';
+        message[6] = 'E';
+        message[7] = 'S';
+        len += 4;
+        break;
+    default:
+        break;
+    }
+    return len;
 }
 
 #endif  /* NETWORK_H_ */
