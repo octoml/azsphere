@@ -31,7 +31,7 @@ def log_generate(jsonData, path):
 
 
 if __name__ == '__main__':
-	jsonData = get_log("sample.log")
+	jsonData = get_log("benchmarks/npi.conv2d.log.tmp")
 	# print(len(jsonData))
 	# print(jsonData[0])
-	log_generate(jsonData, path="history")
+	log_generate(jsonData, path="npi400")
