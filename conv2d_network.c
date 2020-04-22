@@ -38,10 +38,10 @@
 #include "network.h"
 
 // Convolution
-#define H       8
-#define W       8
+#define H       20
+#define W       20
 #define in_ch   3
-#define out_ch  64
+#define out_ch  3
 #define batch   1
 
 // static volatile int fd;
@@ -50,7 +50,7 @@ static ExitCode exitCode = ExitCode_Success;
 static char interface[] = "eth0";
 static uint16_t serverPort = 11000;
 static char serverIP[] = "192.168.0.10";
-static char id[4];
+static uint16_t id;
 static char data_file[] = "build/conv2d_data.bin";
 static char output_file[] = "build/conv2d_output.bin";
 static char id_file[] = "build/id.bin";
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
     goto endApp;
   }
   lseek(fid, 0, SEEK_SET);
-  read(fid, &id, fs);
+  read(fid, &id, sizeof(id));
   close(fid);
 
   char msg [20];
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
 
   bool result = true;
   for (auto i = 0; i < batch*out_ch*H*W; ++i) {
-    if (fabs(output_storage[i] - exp_out[i]) >= 1e-5f) {
+    if (fabs(output_storage[i] - exp_out[i]) >= 1e-3f) {
       result = false;
       Log_Debug("got %f, expected %f\n", output_storage[i], exp_out[i]);
       break;
@@ -196,8 +196,13 @@ int main(int argc, char **argv) {
 
   len = message(id, Message_RESULT, msg);
   msg[len] = ',';
-  if (result)   msg[len+1] = '1';
-  else          msg[len+1] = '0';
+  if (result) {
+    msg[len+1] = '1';
+  }
+  else{
+    msg[len+1] = '0';
+  }
+
   msg[len+2] = '\n';
   len += 3;
   send(socket , msg , len, 0);

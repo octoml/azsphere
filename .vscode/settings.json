@@ -25,6 +25,14 @@
         "c_runtime_api.h": "c",
         "*.def": "cpp",
         "bitset": "cpp",
-        "functional": "cpp"
+        "functional": "cpp",
+        "network.h": "c",
+        "bundle.h": "c",
+        "stdio.h": "c",
+        "time.h": "c",
+        "gpio.h": "c",
+        "inet.h": "c",
+        "exitcode.h": "c",
+        "system_error": "c"
     }
 }

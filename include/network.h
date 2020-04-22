@@ -202,39 +202,37 @@ static ExitCode CheckNetworkStatus(char * interface)
     return ExitCode_Success;
 }
 
-int message(char * id, Message type, char * message) {
+int message(uint16_t id, Message type, char * message) {
     int len = 0;
-    message[0] = id[0];
-    message[1] = id[1];
-    message[2] = id[2];
-    message[3] = id[3];
-    len += 4;
+    message[0] = (id >> 8) & 0xFF;
+    message[1] = id & 0xFF;
+    len += 2;
 
     switch (type)
     {
     case Message_START:
-        message[4] = ',';
-        message[5] = 'S';
-        message[6] = 'T';
-        message[7] = 'A';
-        message[8] = 'R';
-        message[9] = 'T';
-        message[10] = '\n';
+        message[len] = ',';
+        message[len+1] = 'S';
+        message[len+2] = 'T';
+        message[len+3] = 'A';
+        message[len+4] = 'R';
+        message[len+5] = 'T';
+        message[len+6] = '\n';
         len += 7;
         break;
     case Message_TIME:
-        message[4] = ',';
-        message[5] = 'T';
-        message[6] = 'I';
-        message[7] = 'M';
-        message[8] = 'E';
+        message[len] = ',';
+        message[len+1] = 'T';
+        message[len+2] = 'I';
+        message[len+3] = 'M';
+        message[len+4] = 'E';
         len += 5;
         break;
     case Message_RESULT:
-        message[4] = ',';
-        message[5] = 'R';
-        message[6] = 'E';
-        message[7] = 'S';
+        message[len] = ',';
+        message[len+1] = 'R';
+        message[len+2] = 'E';
+        message[len+3] = 'S';
         len += 4;
         break;
     default:
