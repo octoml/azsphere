@@ -4,6 +4,7 @@ from tvm import relay
 from tvm import te
 from topi.testing import conv2d_nchw_python
 import numpy as np
+from array import *
 import os
 import subprocess
 import shutil
@@ -51,18 +52,7 @@ def build_model(schedule_log, batch_size=1, target=None):
 			graph, lib, params = relay.build_module.build(
 				mod, target=target, params=params)
 
-	## get TVM result on local machine
-	params = {"W": w_data}
-	# local_target = 'llvm --system-lib'
-	# graph, lib, params = relay.build_module.build(
-		# tvm.IRModule.from_expr(func), target=local_target, params=params)
-	# tvm_out = run_conv2d_module(a_data, graph, lib, params, target=local_target)
 	b_np = conv2d_nchw_python(a_data, w_data, (stride, stride), (pad, pad))
-	# print("TVM Output: " + str(tvm_out.shape))
-	# print("Numpy Output: " + str(b_np.shape))
-	# np.testing.assert_allclose(b_np, tvm_out, rtol=1e-2)
-
-
 	return graph, lib, params, a_data, b_np
 
 	
@@ -115,9 +105,10 @@ class AzureSphere():
 			fp.write(self.dataOut.astype(np.float32).tobytes())
 
 		##generate ID
-		uint_key = np.uint32(self.key)
+		id = np.array(self.key).astype(np.uint16)
 		with open(os.path.join(build_dir, 'id.bin'), "wb") as fp:
-			fp.write(uint_key.astype(np.uint32).tobytes())
+			id.tofile(fp)
+			fp.close()
 
 	def dependency(self, config_path, src_path):
 		if not os.path.exists(config_path) or \
@@ -139,12 +130,20 @@ class AzureSphere():
 			os.path.join(self.exportPath, file))
 	
 	def package(self):
-		process = subprocess.Popen("make -C " + self.exportPath + " imagepackage",
+		current_dir = os.path.dirname(__file__)
+
+		# move to lib directory
+		os.chdir(self.exportPath)
+		process = subprocess.Popen("make " + " imagepackage",
                      shell = True,
 					 stdout = subprocess.PIPE,
 					 stderr=subprocess.PIPE)
 		out, err = process.communicate()
-		if os.path.exists(os.path.join(self.exportPath, "octoml_AS.imagepackage")):
+
+		if os.path.exists(os.path.join("build", "octoml_AS.imagepackage")):
 			print("Package of " + self.libPath + " created!")
 		else:
 			print("Package error in library " + str(self.libPath))
+		
+		# move to tuning directory
+		os.chdir(current_dir)

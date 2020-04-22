@@ -6,20 +6,29 @@ CMAKE_FLAGS = -G "Ninja" \
 	--no-warn-unused-cli \
 	-DCMAKE_BUILD_TYPE="Debug" \
 	-DCMAKE_MAKE_PROGRAM="ninja" \
-	./
+	../
 
 build_dir := build
 
-debug_init:
+delete:
 	azsphere device sideload delete
 
 connect:
 	sudo /opt/azurespheresdk/Tools/azsphere_connect.sh
 
+program:
+	azsphere device sideload deploy --imagepackage $(build_dir)/octoml_AS.imagepackage
+	
+start:
+	azsphere device app start
+
+stop:
+	azsphere device app stop
+
 # build image package
 imagepackage: $(build_dir)/model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c $(build_dir)/conv2d_data.bin $(build_dir)/conv2d_output.bin $(build_dir)/id.bin
 	@mkdir -p $(@D)
-	cmake $(CMAKE_FLAGS) && ninja
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
 # Serialize files
 $(build_dir)/conv2d_graph.json.c: $(build_dir)/conv2d_graph.json
