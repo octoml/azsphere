@@ -16,44 +16,47 @@ azure_src = [
 	# "applibs_versions.h"
 ]
 
-def build_model(schedule_log, batch_size=1, target=None):
-	in_ch = 3
-	in_size = 20
-	out_ch = 3
-	HH = WW = 7
-	stride = 1
-	pad = 3
-	input_shape = (batch_size, in_ch, in_size, in_size)
-	kernel_shape = (out_ch, in_ch, HH, WW)
-	output_shape = (batch_size, out_ch, in_size, in_size)
-	dtype = 'float32'
+ID_OFF = 1000
 
-	A = relay.var('A', shape=input_shape)
-	W = relay.var('W', shape=kernel_shape)
-	B = relay.op.nn.nn.conv2d(A, W,
-							strides=(stride, stride),
-							padding=(pad, pad),
-							kernel_size=HH, 
-							data_layout='NCHW', 
-							kernel_layout='OIHW',
-							out_layout='',
-							out_dtype='')
+# def build_model(schedule_log, batch_size=1, target=None):
+# 	in_ch = 3
+# 	in_size = 20
+# 	out_ch = 3
+# 	HH = WW = 7
+# 	stride = 1
+# 	pad = 3
+# 	input_shape = (batch_size, in_ch, in_size, in_size)
+# 	kernel_shape = (out_ch, in_ch, HH, WW)
+# 	output_shape = (batch_size, out_ch, in_size, in_size)
+# 	dtype = 'float32'
 
-	a_data = np.random.uniform(size=(batch_size, in_ch, 
-                            in_size, in_size)).astype('float32')
-	w_data = np.random.uniform(size=(out_ch, in_ch, 
-							HH, WW)).astype('float32')
-	func = relay.Function([A, W], B)
-	params = {"W": w_data}
-	mod = tvm.IRModule.from_expr(func)
+# 	A = relay.var('A', shape=input_shape)
+# 	W = relay.var('W', shape=kernel_shape)
+# 	B = relay.op.nn.nn.conv2d(A, W,
+# 							strides=(stride, stride),
+# 							padding=(pad, pad),
+# 							kernel_size=HH, 
+# 							data_layout='NCHW', 
+# 							kernel_layout='OIHW',
+# 							out_layout='',
+# 							out_dtype='')
 
-	with autotvm.apply_history_best(schedule_log):
-		with relay.build_config(opt_level=3):
-			graph, lib, params = relay.build_module.build(
-				mod, target=target, params=params)
+# 	a_data = np.random.uniform(size=(batch_size, in_ch, 
+#                             in_size, in_size)).astype('float32')
+# 	w_data = np.random.uniform(size=(out_ch, in_ch, 
+# 							HH, WW)).astype('float32')
+# 	func = relay.Function([A, W], B)
+# 	params = {"W": w_data}
+# 	mod = tvm.IRModule.from_expr(func)
 
-	b_np = conv2d_nchw_python(a_data, w_data, (stride, stride), (pad, pad))
-	return graph, lib, params, a_data, b_np
+# 	print(schedule_log)
+# 	with autotvm.apply_history_best(schedule_log):
+# 		with relay.build_config(opt_level=3):
+# 			graph, lib, params = relay.build_module.build(
+# 				mod, target=target, params=params)
+
+# 	b_np = conv2d_nchw_python(a_data, w_data, (stride, stride), (pad, pad))
+# 	return graph, lib, params, a_data, b_np
 
 	
 class AzureSphere():
@@ -74,10 +77,50 @@ class AzureSphere():
 		self.output = None
 		self.isBuild = False
 
+	def build_model(self, schedule_log, batch_size=1, target=None):
+		in_ch = 3
+		in_size = 20
+		out_ch = 3
+		HH = WW = 7
+		stride = 1
+		pad = 3
+		input_shape = (batch_size, in_ch, in_size, in_size)
+		kernel_shape = (out_ch, in_ch, HH, WW)
+		output_shape = (batch_size, out_ch, in_size, in_size)
+		dtype = 'float32'
+
+		A = relay.var('A', shape=input_shape)
+		W = relay.var('W', shape=kernel_shape)
+		B = relay.op.nn.nn.conv2d(A, W,
+								strides=(stride, stride),
+								padding=(pad, pad),
+								kernel_size=HH, 
+								data_layout='NCHW', 
+								kernel_layout='OIHW',
+								out_layout='',
+								out_dtype='')
+
+		a_data = np.random.uniform(size=(batch_size, in_ch, 
+	                            in_size, in_size)).astype('float32')
+		w_data = np.random.uniform(size=(out_ch, in_ch, 
+								HH, WW)).astype('float32')
+		func = relay.Function([A, W], B)
+		params = {"W": w_data}
+		mod = tvm.IRModule.from_expr(func)
+
+		# print(schedule_log)
+		with autotvm.apply_history_best(schedule_log):
+			with relay.build_config(opt_level=3):
+				graph, lib, params = relay.build_module.build(
+					mod, target=target, params=params)
+
+		b_np = conv2d_nchw_python(a_data, w_data, (stride, stride), (pad, pad))
+		return graph, lib, params, a_data, b_np
+
 	# build graph, lib, params
 	def build(self):
 		self.graph, self.lib, self.params, self.dataIn, self.dataOut \
-		= build_model(schedule_log=self.schedule_path,
+		= self.build_model(schedule_log=self.schedule_path,
 					  target=self.target)
 		print("Model " + self.libPath + " created!")
 	
@@ -105,10 +148,11 @@ class AzureSphere():
 			fp.write(self.dataOut.astype(np.float32).tobytes())
 
 		##generate ID
-		id = np.array(self.key).astype(np.uint16)
+		# id = np.array(self.key + ID_OFF).astype(np.uint16)
+		id = np.array(0).astype(np.uint16)
+		print(id)
 		with open(os.path.join(build_dir, 'id.bin'), "wb") as fp:
 			id.tofile(fp)
-			fp.close()
 
 	def dependency(self, config_path, src_path):
 		if not os.path.exists(config_path) or \

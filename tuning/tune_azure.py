@@ -19,12 +19,10 @@ def build(export_path, schedule_path, early_break=None):
     for entry in entries:
         files.append(os.path.join(schedule_path, entry))
 
-    # build files
-    as_instances = []
+    ## build files
     target = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
-    # target = tvm.target.create('llvm -device=arm_cpu -target=arm-linux-gnueabihf')
     for ii in range(len(files)):
-        if early_break and ii > early_break:
+        if early_break and ii >= early_break:
             break
         tmp = AzureSphere(key=ii,
                           schedule_path=files[ii],
@@ -32,8 +30,8 @@ def build(export_path, schedule_path, early_break=None):
         tmp.build()
         tmp.export(export_path)
         tmp.dependency(config_path='config', src_path='../')
-        as_instances.append(tmp)
-    return as_instances
+        tmp.package()
+        del tmp
 
 def clear():
     process = subprocess.Popen("azsphere device sideload delete",
@@ -73,9 +71,9 @@ def run(task_path):
                 stderr=subprocess.PIPE)
         process.communicate()
 
-        print("sleeping!")
-        time.sleep(5)
-        print("Continue!")
+        # print("sleeping!")
+        time.sleep(1)
+        # print("Continue!")
 
     clear()
     return 0
@@ -84,15 +82,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--build', action='store_true')
     parser.add_argument('--run', action='store_true')
+    parser.add_argument('-s', '--source', default='')
     opts = parser.parse_args()
 
     build_dir = 'build'
     
     if opts.build:
-        items = build(export_path=build_dir, 
-            schedule_path="/home/parallels/azure-sphere/tuning/npi/schedules/npi400",
-            early_break=10)
-        for ii in range(len(items)):
-            items[ii].package()
+        if not opts.source:
+            raise
+        build(export_path=build_dir, 
+            schedule_path=opts.source,
+            early_break=None)
+
     if opts.run:
         run(task_path=build_dir)
