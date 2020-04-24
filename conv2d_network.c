@@ -27,6 +27,7 @@
 #include <applibs/storage.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <math.h>
 #include <hw/sample_hardware.h>
@@ -186,7 +187,7 @@ int main(int argc, char **argv) {
   close(fid);
 
   bool result = true;
-  for (auto i = 0; i < batch*out_ch*H*W; ++i) {
+  for (int i = 0; i < batch*out_ch*H*W; ++i) {
     if (fabs(output_storage[i] - exp_out[i]) >= 1e-3f) {
       result = false;
       Log_Debug("got %f, expected %f\n", output_storage[i], exp_out[i]);
@@ -216,18 +217,24 @@ int main(int argc, char **argv) {
          (t5.tv_sec-t4.tv_sec)*1000 + (t5.tv_usec-t4.tv_usec)/1000.f);
 
 
-  uint32_t duration = (t3.tv_sec-t2.tv_sec)*1000 + (t3.tv_usec-t2.tv_usec)/1000.f;
+  float duration = (t3.tv_sec-t2.tv_sec)*1000 + (t3.tv_usec-t2.tv_usec)/1000.f;
   len = message(id, Message_TIME, msg);
   msg[len] = ',';
   len += 1;
 
-  msg[len]    = (duration >> 24) & 0xff;
-  msg[len+1]  = (duration >> 16) & 0xff;
-  msg[len+2]  = (duration >> 8) & 0xff;
-  msg[len+3]  = duration & 0xff;
+  char time_array[10];
+  int ret = snprintf(time_array, sizeof time_array, "%3.5f", duration);
+  if (ret < 0){
+    goto endApp;
+  }
+
+  for (int ii=0; ii<10; ii++) {
+    msg[len + ii] = time_array[ii];
+  }
+  len += 10;
   
-  msg[len+4]  = '\n';
-  len += 5;
+  msg[len]  = '\n';
+  len += 1;
   send(socket , msg , len, 0);
   shutdown(socket, 2);
 
