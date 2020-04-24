@@ -2,6 +2,15 @@ import struct
 import argparse
 import json
 import matplotlib.pyplot as plt
+import statistics
+import numpy as np 
+
+KERNEL = 7
+CI = 3
+C_OUT = 3
+H_OUT = 20
+W_OUT = 20
+TOTAL_OPS = (CI * H_OUT * W_OUT * KERNEL * KERNEL * C_OUT) * 2
 
 def npi_to_json(logFile):
 	data = []
@@ -12,8 +21,9 @@ def npi_to_json(logFile):
 	result = []
 	for ii in range(len(data)):
 		record = {'id' : ii}
-		time = data[ii]['result'][0][0]
+		time = data[ii]['result'][0][0] * 1e3
 		record.update({'time': time})
+		record.update({'flop': (TOTAL_OPS/float(time))*1000.0})
 
 		if time > 1e8:
 			record.update({'result' : False})
@@ -28,6 +38,7 @@ def azure_to_json(logFile):
 	lineCount = 0
 	with open(logFile, 'rb') as f:
 		line = "1"
+		task_counter = 0
 		while(line):
 			line = f.readline()
 			lineCount += 1
@@ -38,8 +49,8 @@ def azure_to_json(logFile):
 			if "START" in line_str and len(line) == 9:
 				id0 = struct.unpack('B', line[0:1])[0]
 				id1 = struct.unpack('B', line[1:2])[0]
-				id = id0*(2**8) + id1
-				# print('id = ' + str(id0) + ' ' + str(id1))
+				# id = id0*(2**8) + id1
+				id = task_counter
 				item = {"id" : id}
 				itemDone = False
 			elif "RES" in line_str and len(line) == 9:
@@ -53,22 +64,68 @@ def azure_to_json(logFile):
 				# print("res: " + str(result))
 				item.update({"result" : result})
 				itemDone = False
-			elif "TIME" in line_str and len(line) == 13:
-				time0 = struct.unpack('B', line[8:9])[0] 	* (2**24)
-				time1 = struct.unpack('B', line[9:10])[0] 	* (2**16)
-				time2 = struct.unpack('B', line[10:11])[0] 	* (2**8)
-				time3 = struct.unpack('B', line[11:12])[0]
-
-				time = time0 + time1 + time2 + time3
+			elif "TIME" in line_str and len(line) == 19:
+				time = line[8:8+10]
+				time = time.decode("utf-8")
+				time = time.strip('\x00')
+				time = float(time)
 				item.update({"time" : time})
+				item.update({'flop': (TOTAL_OPS/float(time))*1000.0})
 				itemDone = True
 
 			if itemDone:
 				runtime.append(item)
+				task_counter += 1
 
 		print("azure line read: " + str(lineCount))
 		print("azure num of tasks: " + str(len(runtime)))
 	return runtime
+
+def plot_flops(azure, npi):
+	azure_flops = []
+	npi_flops = []
+	maxVal = 0
+	for item in azure:
+		npi_item = list(filter(lambda task: task['id'] == item['id'], npi))[0]
+		if npi_item['result'] and item['result']:
+			f0 = item['flop']
+			f1 = npi_item['flop']
+			azure_flops.append(f0)
+			npi_flops.append(f1)
+
+	azure_acc = []
+	azure_best = azure_flops[0]
+	for item in azure_flops:
+		if item >= azure_best:
+			azure_acc.append(item)
+			azure_best = item
+		else:
+			azure_acc.append(azure_best)
+
+	npi_acc = []
+	npi_best = npi_flops[0]
+	for item in npi_flops:
+		if item >= npi_best:
+			npi_acc.append(item)
+			npi_best = item
+		else:
+			npi_acc.append(npi_best)
+
+	scale = 1e6 * 1.0
+	azure_plot = [x / scale for x in azure_acc]
+	npi_plot = [x / scale for x in npi_acc]
+	# plt.subplot(2, 1, 1)
+	plt.plot(azure_plot, 'r--', npi_plot, 'b--')
+	
+	# plt.yscale('log')
+	plt.xlim(left=-5)
+	plt.ylim(bottom=0)
+	plt.ylabel('MFLOPS')
+	plt.xlabel('Trials')
+	plt.legend(['Azure', 'NPI'])
+
+	plt.subplots_adjust(bottom=0.1, top=0.95, left=0.1, right=0.99)
+	plt.show()
 
 def plot_time(azure, npi):
 	time_azure = []
@@ -82,17 +139,34 @@ def plot_time(azure, npi):
 			time_azure.append(t0)
 			time_npi.append(t1)
 
-	azure_norm = [float(i)/max(time_azure) for i in time_azure]
-	npi_norm = [float(i)/max(time_npi) for i in time_npi]
-	print(len(time_azure))
-	plt.scatter(azure_norm, npi_norm)
-	
-	print("Azure: " + str(azure_norm.index(min(azure_norm))))
-	print("NPI: " + str(npi_norm.index(min(npi_norm))))
+	# azure_norm = [float(i)/max(time_azure) for i in time_azure]
+	# npi_norm = [float(i)/max(time_npi) for i in time_npi]
+	azure_final = time_azure
+	npi_final = time_npi
 
-	# plt.plot(azure_norm, 'r*', npi_norm, 'bs')
-	# plt.ylabel('Azure')
-	# plt.xlabel('Npi')
+	print("size of plot: " + str(len(time_azure)))
+	print("Azure min task number: " + str(time_azure.index(min(time_azure))) + " and time: " + str(min(time_azure)))
+	print("NPI min task number: " + str(time_npi.index(min(time_npi))) + " and time: " + str(min(time_npi)))
+
+	plt.subplot(2, 1, 1)
+	plt.plot(azure_final, 'r*', npi_final, 'bs')
+
+	plt.yscale('log')
+	plt.xlim(left=-1)
+	plt.ylim(bottom=0)
+	plt.ylabel('Time (ms) (log scale)')
+	plt.xlabel('Trials')
+	plt.legend(['Azure', 'NPI'])
+	plt.title("Runtime")
+
+	plt.subplot(2, 1, 2)
+	plt.scatter(x=azure_final, y=npi_final)
+	plt.xlabel('Time Azure (ms)')
+	plt.ylabel('Time NPI (ms)')
+	plt.xlim(left=0)
+	plt.ylim(bottom=0)
+
+	plt.subplots_adjust(bottom=0.1, top=0.95, left=0.1, right=0.99)
 	plt.show()
 
 if __name__ == '__main__':
@@ -101,16 +175,28 @@ if __name__ == '__main__':
 	parser.add_argument('-s', '--source', default='')
 	opts = parser.parse_args()
 
-	azure = azure_to_json(logFile=opts.file)
-	npi = npi_to_json(logFile=opts.source)
+	azure = []
+	npi = []
 
-	plot_time(azure=azure, npi=npi)
-	# npi_time = []
+	if opts.file:
+		azure = azure_to_json(logFile=opts.file)
+
+	if opts.source:
+		npi = npi_to_json(logFile=opts.source)
+
+	# count = 0
 	# for item in npi:
-	# 	npi_time.append(item['time'])
+	# 	if item["result"] == False:
+	# 		count += 1
+	# print(count) 
 
-	# plt.plot(npi_time)
-	# plt.ylabel('Time (ms)')
-	# plt.show()
-	# for item in runtime:
-	# 	print(item)
+	# test = []
+	# for item in azure:
+	# 	if item['result']:
+	# 		test.append(item["time"])
+	# print(len(test))
+	# print(statistics.mean(test))
+	# print(statistics.stdev(test))
+
+	# plot_time(azure=azure, npi=npi)
+	plot_flops(azure=azure, npi=npi)
