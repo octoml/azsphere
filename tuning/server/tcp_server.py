@@ -6,6 +6,8 @@ import json
 from enum import Enum
 import argparse
 
+IP = '192.168.0.10'
+PORT = 11000
 
 class NetworkState(Enum):
 	WAITING = 1
@@ -16,10 +18,6 @@ class NetworkState(Enum):
 def exitHandler():
 	print("closing socket!")
 	sock.close()
-
-
-IP = '192.168.0.10'
-PORT = 11000
 
 def server_start(opts):
 	# Create a TCP/IP socket
@@ -34,7 +32,7 @@ def server_start(opts):
 	sock.listen(1)
 
 	atexit.register(exitHandler)
-	log_file = open(opts.log, "wb+", buffering=1)
+	log_file = open(opts.log, "wb+", buffering=0)
 
 	numOfConnection = 1
 	while True:
@@ -64,7 +62,6 @@ def server_start(opts):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--log', default='')
-	parser.add_argument('--run', action='store_true')
 	opts = parser.parse_args()
 
 	server_start(opts)
