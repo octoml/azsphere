@@ -33,6 +33,8 @@
         "gpio.h": "c",
         "inet.h": "c",
         "exitcode.h": "c",
-        "system_error": "c"
+        "system_error": "c",
+        "cstdio": "c",
+        "string.h": "c"
     }
 }
