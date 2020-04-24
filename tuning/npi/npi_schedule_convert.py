@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import argparse
 
 def get_log(filename):
 	data = []
@@ -18,7 +19,7 @@ def log_generate(jsonData, path):
 
 	count = 0
 	for log in jsonData:
-		filename = "hist_log_" + str(count).zfill(4) + ".log"
+		filename = "schedule_" + str(count).zfill(4) + ".txt"
 		count += 1
 		filepath = os.path.join(path, filename)
 		with open(filepath, 'w+') as f:
@@ -31,7 +32,10 @@ def log_generate(jsonData, path):
 
 
 if __name__ == '__main__':
-	jsonData = get_log("benchmarks/npi.conv2d.log.tmp")
-	# print(len(jsonData))
-	# print(jsonData[0])
-	log_generate(jsonData, path="npi400")
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-s', '--source', default='')
+	parser.add_argument('-d', '--destination', default='')
+	opts = parser.parse_args()
+
+	jsonData = get_log(filename=opts.source)
+	log_generate(jsonData, path=opts.destination)

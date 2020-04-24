@@ -220,14 +220,14 @@ def get_conv2d(batch_size):
 
 # Replace "aarch64-linux-gnu" with the correct target of your board.
 # This target is used for cross compilation. You can query it by :code:`gcc -v` on your device.
-# target = tvm.target.create('llvm -device=arm_cpu -target=aarch64-linux-gnu')
+# target = tvm.target.create('llvm -device=arm_cpu -target=arm-linux-gnueabihf')
 # target = tvm.target.create('llvm -device=arm_cpu -target=arm-linux-gnueabihf --system-lib')
-target = tvm.target.create('llvm -device=arm_cpu -target=arm-linux-gnueabihf')
-# --with-arch=armv7-a
-# target = tvm.target.create('llvm -target=armv7l-linux-gnueabihf')
+# target = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
+# target = tvm.target.create('llvm -device=arm_cpu -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
+# target = tvm.target.create('llvm -device=arm_cpu -target=arm-poky-linux-musleabi -mcpu=cortex-a7 -mattr=+neon --system-lib')
+target = tvm.target.create('llvm -device=arm_cpu')
 
 # Also replace this with the device key in your tracker
-# device_key = 'rk3399'
 device_key = 'npi'
 
 # Set this to True if you use android phone
@@ -318,6 +318,8 @@ def tune_tasks(tasks,
 
         # do tuning
         tsk_trial = min(n_trial, len(tsk.config_space))
+        print("INFO: config space size: " + str(len(tsk.config_space)))
+        print("INFO: num of tasks: " + str(tsk_trial))
         tuner_obj.tune(n_trial=tsk_trial,
                        early_stopping=early_stopping,
                        measure_option=measure_option,
@@ -329,7 +331,6 @@ def tune_tasks(tasks,
     # pick best records to a cache file
     autotvm.record.pick_best(tmp_log_file, log_filename)
     # os.remove(tmp_log_file)
-
 
 ########################################################################
 # Finally, we launch tuning jobs and evaluate the end-to-end performance.
@@ -374,6 +375,7 @@ def tune_and_evaluate(tuning_opt):
         # upload parameters to device
         ctx = remote.context(str(target), 0)
         module = runtime.create(graph, rlib, ctx)
+        print("input shape: " + str(input_shape))
         data_tvm = tvm.nd.array((np.random.uniform(size=input_shape)).astype(dtype))
         if network == 'conv2d':
             module.set_input('A', data_tvm)
