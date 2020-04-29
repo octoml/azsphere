@@ -21,6 +21,7 @@ def build(export_path, schedule_path, early_break=None):
 
     ## build files
     target = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
+    # target = tvm.target.create('llvm -device=arm_cpu -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
     for ii in range(len(files)):
         if early_break and ii >= early_break:
             break
