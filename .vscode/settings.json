@@ -35,6 +35,7 @@
         "exitcode.h": "c",
         "system_error": "c",
         "cstdio": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "errno.h": "c"
     }
 }
