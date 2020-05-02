@@ -20,13 +20,14 @@ if local:
 	TARGET = 'llvm --system-lib'
 else:
     TARGET = 'llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib'
+    # TARGET = 'llvm -device=arm_cpu -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib'
 
 BATCH = 1
 IN_CHANNEL = 3
-OUT_CHANNEL = 64
-IN_SIZE = 8
-KERNEL = 5
-PAD = 2
+OUT_CHANNEL = 3
+IN_SIZE = 20
+KERNEL = 7
+PAD = 3
 STRIDE = 1
 
 def build_module(opts):
@@ -35,7 +36,7 @@ def build_module(opts):
     block = get_model('mobilenet0.25', pretrained=True)
     shape_dict = {'data': dshape}
     mod, params = relay.frontend.from_mxnet(block, shape_dict)
-
+    
     # quanitization
     if (opts.quantize):
         mod = quantize(mod, params, data_aware=False)
@@ -56,6 +57,79 @@ def build_module(opts):
         f_graph_json.write(graph)
     with open(os.path.join(build_dir, 'params.bin'), 'wb') as f_params:
         f_params.write(relay.save_param_dict(params))
+
+def build_cifar(opts):
+    from keras.datasets import cifar10
+    from keras.models import load_model
+    import keras
+
+    model = load_model('tuning/model/saved_models/cifar10_ch8.h5')
+    print(model.summary())
+
+    shape_dict = {'conv2d_1_input': (1, 3, 32, 32)}
+    mod, params = relay.frontend.from_keras(model, shape_dict)
+    print(mod)
+
+    # with autotvm.apply_graph_best(graph_opt_sch_file):
+    print("Compile...")
+    with relay.build_config(opt_level=3):
+        graph, lib, params = relay.build_module.build(
+            mod, target=TARGET, params=params)
+
+    lib.save(os.path.join(build_dir, 'cifar_model.o'))
+    with open(os.path.join(build_dir, 'cifar_graph.bin'), 'wb') as f_graph:
+        f_graph.write(bytes(graph, 'utf-8'))
+    with open(os.path.join(build_dir, 'cifar_graph.json'), 'w') as f_graph_json:
+        f_graph_json.write(graph)
+    with open(os.path.join(build_dir, 'cifar_params.bin'), 'wb') as f_params:
+        f_params.write(relay.save_param_dict(params))
+
+    #create input and result
+    num_classes = 10
+    (_, _), (x_test, y_test) = cifar10.load_data()
+
+    x_test = x_test.astype('float32')
+    x_test /= 255
+    y_test = keras.utils.to_categorical(y_test, num_classes)
+
+    test_x_sample = x_test[0:1,:,:,:]
+    test_y_sample = y_test[0:1,:]
+    print('x_test_sample shape:', test_x_sample.shape)
+    print('y_test_sample shape:', test_y_sample.shape)
+    scores = model.evaluate(test_x_sample, test_y_sample, verbose=1)
+    keras_predict = model.predict(test_x_sample)
+    print(keras_predict)
+    
+    ## get TVM result on local machine
+    mod, params = relay.frontend.from_keras(model, shape_dict)
+    local_target = 'llvm --system-lib'
+    with relay.build_config(opt_level=3):
+        graph, lib, params = relay.build_module.build(
+            mod, target=local_target, params=params)
+
+    ctx = tvm.context(local_target, 0)
+    ## create module
+    module = tvm.contrib.graph_runtime.create(graph, lib, ctx)
+    tvm_sample = test_x_sample.transpose([0, 3, 1, 2])
+    print("tvm_sample shape: ", tvm_sample.shape)
+    module.set_input('conv2d_1_input', tvm_sample)
+    module.set_input(**params)
+    ## run
+    module.run()
+    # get output
+    tvm_out = module.get_output(0).asnumpy()
+    
+    print("TVM Output: " + str(tvm_out.shape))
+    print("Keras Output: " + str(keras_predict.shape))
+    np.testing.assert_allclose(tvm_out, keras_predict, rtol=1e-2)
+    
+    # save TVM results for target
+    with open(os.path.join(build_dir, "cifar_data.bin"), "wb") as fp:
+        fp.write(tvm_sample.astype(np.float32).tobytes())
+    with open(os.path.join(build_dir, "cifar_output.bin"), "wb") as fp:
+        fp.write(tvm_out.astype(np.float32).tobytes())
+
+    generate_id()
 
 def build_conv2d_module(opts):
     A = relay.var('A', shape=(BATCH, IN_CHANNEL, IN_SIZE, IN_SIZE))
@@ -250,8 +324,6 @@ def tune_tasks(tasks,
     if os.path.exists(tmp_log_file):
         os.remove(tmp_log_file)
 
-    pdb.set_trace()
-
     for i, tsk in enumerate(reversed(tasks)):
         # import pdb; pdb.set_trace()
         prefix = "[Task %2d/%2d] " % (i+1, len(tasks))
@@ -291,7 +363,8 @@ def tune_tasks(tasks,
 
 def tune_and_evaluate(opts, tuning_opt):
     # target = tvm.target.create('llvm -device=arm_cpu -target=aarch64-linux-gnu')
-    target = TARGET
+    target = TARGET + ' -device_name=azure-sphere'
+    print(target)
     # extract workloads from relay program
     print("Extract tasks...")
     # mod, params, input_shape, _ = get_network('resnet-18', batch_size=1)
@@ -301,19 +374,19 @@ def tune_and_evaluate(opts, tuning_opt):
                                               params=params,
                                               ops=(relay.op.get("nn.conv2d"),))
 
-    with relay.build_config(opt_level=3):
-        graph, lib, params = relay.build_module.build(
-            mod, target=target, params=params)
+    # with relay.build_config(opt_level=3):
+    #     graph, lib, params = relay.build_module.build(
+    #         mod, target=target, params=params)
 
-    build_dir = os.path.abspath(opts.out_dir)
-    if not os.path.isdir(build_dir):
-        os.makedirs(build_dir)
+    # build_dir = os.path.abspath(opts.out_dir)
+    # if not os.path.isdir(build_dir):
+    #     os.makedirs(build_dir)
 
-    lib.save(os.path.join(build_dir, 'res_conv_model.o'))
-    with open(os.path.join(build_dir, 'res_conv_graph.json'), 'w') as f_graph_json:
-        f_graph_json.write(graph)
-    with open(os.path.join(build_dir, 'res_conv_params.bin'), 'wb') as f_params:
-        f_params.write(relay.save_param_dict(params))
+    # lib.save(os.path.join(build_dir, 'res_conv_model.o'))
+    # with open(os.path.join(build_dir, 'res_conv_graph.json'), 'w') as f_graph_json:
+    #     f_graph_json.write(graph)
+    # with open(os.path.join(build_dir, 'res_conv_params.bin'), 'wb') as f_params:
+    #     f_params.write(relay.save_param_dict(params))
     # with open(os.path.join(build_dir, "test_data.bin"), "wb") as fp:
     #     fp.write(x_data.astype(np.float32).tobytes())
 
@@ -359,6 +432,11 @@ def tune_and_evaluate(opts, tuning_opt):
     #     print("Mean inference time (std dev): %.2f ms (%.2f ms)" %
     #           (np.mean(prof_res), np.std(prof_res)))
 
+def generate_id(id=0):
+    id = np.array(id).astype(np.uint16)
+    with open(os.path.join(build_dir, 'id.bin'), "wb") as fp:
+        id.tofile(fp)
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
@@ -369,8 +447,13 @@ if __name__ == '__main__':
     parser.add_argument('--conv2d', action='store_true')
     parser.add_argument('--conv2dauto', action='store_true')
     parser.add_argument('--x86', action='store_true')
+    parser.add_argument('--cifar', action='store_true')
     opts = parser.parse_args()
     
+    build_dir = os.path.abspath(opts.out_dir)
+    if not os.path.isdir(build_dir):
+        os.makedirs(build_dir)
+
     if opts.test:
         build_test_module(opts)
     elif opts.conv2d:
@@ -417,6 +500,8 @@ if __name__ == '__main__':
                 ),
             }
         tune_and_evaluate(opts, tuning_option)
+    elif opts.cifar:
+        build_cifar(opts)
     else:
         build_module(opts)
         build_inputs(opts)
