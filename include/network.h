@@ -1,5 +1,5 @@
-#ifndef NETWORK_H_
-#define NETWORK_H_
+#ifndef AS_NETWORK_H_
+#define AS_NETWORK_H_
 
 #include <applibs/networking.h>
 #include <sys/socket.h>
@@ -38,11 +38,15 @@ static ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName,
     int r = Networking_IpConfig_Apply(interfaceName, &ipConfig);
     Networking_IpConfig_Destroy(&ipConfig);
     if (r != 0) {
-        Log_Debug("ERROR: Networking_IpConfig_Apply: %d (%s)\n", errno, strerror(errno));
+        #if AS_DEBUG
+        fprintf(stderr, "ERROR: Networking_IpConfig_Apply: %d (%s)\n", errno, strerror(errno));
+        #endif  /* AS_DEBUG */
         return ExitCode_ConfigureStaticIp_IpConfigApply;
     }
-    Log_Debug("INFO: Set static IP address on network interface: %s.\n", interfaceName);
-
+    #if AS_DEBUG
+    fprintf(stderr, "INFO: Set static IP address on network interface: %s.\n", interfaceName);
+    #endif  /* AS_DEBUG */
+    
     return ExitCode_Success;
 }
 
@@ -83,7 +87,9 @@ int OpenIpV4Socket(char * ip, uint16_t port, int sockType, ExitCode *callerExitC
 
 static void ReportError(const char *desc)
 {
-    Log_Debug("ERROR: TCP server: \"%s\", errno=%d (%s)\n", desc, errno, strerror(errno));
+    #if AS_DEBUG
+    fprintf(stderr, "ERROR: TCP server: \"%s\", errno=%d (%s)\n", desc, errno, strerror(errno));
+    #endif  /* AS_DEBUG */
 }
 
 ExitCode NetworkEnable(char * interface) {
@@ -91,12 +97,16 @@ ExitCode NetworkEnable(char * interface) {
     int result = Networking_SetInterfaceState(interface, true);
     if (result != 0) {
         if (errno == EAGAIN) {
-            Log_Debug("INFO: The networking stack isn't ready yet, will try again later.\n");
+            #if AS_DEBUG
+            fprintf(stderr, "INFO: The networking stack isn't ready yet, will try again later.\n");
+            #endif  /* AS_DEBUG */
             return ExitCode_Success;
         } else {
-            Log_Debug(
+            #if AS_DEBUG
+            fprintf(stderr, 
                 "ERROR: Networking_SetInterfaceState for interface '%s' failed: errno=%d (%s)\n",
                 interface, errno, strerror(errno));
+            #endif  /* AS_DEBUG */
             return ExitCode_CheckStatus_SetInterfaceState;
         }
     }
@@ -109,12 +119,16 @@ static ExitCode CheckNetworkStatus(char * interface)
     int result = Networking_SetInterfaceState(interface, true);
     if (result != 0) {
         if (errno == EAGAIN) {
-            Log_Debug("INFO: The networking stack isn't ready yet, will try again later.\n");
+            #if AS_DEBUG
+            fprintf(stderr, "INFO: The networking stack isn't ready yet, will try again later.\n");
+            #endif  /* AS_DEBUG */
             return ExitCode_Success;
         } else {
-            Log_Debug(
+            #if AS_DEBUG
+            fprintf(stderr, 
                 "ERROR: Networking_SetInterfaceState for interface '%s' failed: errno=%d (%s)\n",
                 interface, errno, strerror(errno));
+            #endif  /* AS_DEBUG */
             return ExitCode_CheckStatus_SetInterfaceState;
         }
     }
@@ -123,11 +137,15 @@ static ExitCode CheckNetworkStatus(char * interface)
     // Display total number of network interfaces.
     ssize_t count = Networking_GetInterfaceCount();
     if (count == -1) {
-        Log_Debug("ERROR: Networking_GetInterfaceCount: errno=%d (%s)\n", errno, strerror(errno));
+        #if AS_DEBUG
+        fprintf(stderr, "ERROR: Networking_GetInterfaceCount: errno=%d (%s)\n", errno, strerror(errno));
+        #endif  /* AS_DEBUG */
         return ExitCode_CheckStatus_GetInterfaceCount;
     }
-    Log_Debug("INFO: Networking_GetInterfaceCount: count=%zd\n", count);
-
+    #if AS_DEBUG
+    fprintf(stderr, "INFO: Networking_GetInterfaceCount: count=%zd\n", count);
+    #endif  /* AS_DEBUG */
+    
     // Read current status of all interfaces.
     size_t bytesRequired = ((size_t)count) * sizeof(Networking_NetworkInterface);
     Networking_NetworkInterface *interfaces = malloc(bytesRequired);
@@ -137,19 +155,24 @@ static ExitCode CheckNetworkStatus(char * interface)
 
     ssize_t actualCount = Networking_GetInterfaces(interfaces, (size_t)count);
     if (actualCount == -1) {
-        Log_Debug("ERROR: Networking_GetInterfaces: errno=%d (%s)\n", errno, strerror(errno));
+        #if AS_DEBUG
+        fprintf(stderr, "ERROR: Networking_GetInterfaces: errno=%d (%s)\n", errno, strerror(errno));
+        #endif  /* AS_DEBUG */  
     }
-    Log_Debug("INFO: Networking_GetInterfaces: actualCount=%zd\n", actualCount);
-
+    #if AS_DEBUG
+    fprintf(stderr, "INFO: Networking_GetInterfaces: actualCount=%zd\n", actualCount);
+    #endif  /* AS_DEBUG */
+    
     // Print detailed description of each interface.
+    #if AS_DEBUG
     for (ssize_t i = 0; i < actualCount; ++i) {
-        Log_Debug("INFO: interface #%zd\n", i);
+        fprintf(stderr, "INFO: interface #%zd\n", i);
 
         // Print the interface's name.
-        Log_Debug("INFO:   interfaceName=\"%s\"\n", interfaces[i].interfaceName);
+        fprintf(stderr, "INFO:   interfaceName=\"%s\"\n", interfaces[i].interfaceName);
 
         // Print whether the interface is enabled.
-        Log_Debug("INFO:   isEnabled=\"%d\"\n", interfaces[i].isEnabled);
+        fprintf(stderr, "INFO:   isEnabled=\"%d\"\n", interfaces[i].isEnabled);
 
         // Print the interface's configuration type.
         Networking_IpType ipType = interfaces[i].ipConfigurationType;
@@ -165,7 +188,7 @@ static ExitCode CheckNetworkStatus(char * interface)
             typeText = "unknown-configuration-type";
             break;
         }
-        Log_Debug("INFO:   ipConfigurationType=%d (%s)\n", ipType, typeText);
+        fprintf(stderr, "INFO:   ipConfigurationType=%d (%s)\n", ipType, typeText);
 
         // Print the interface's medium.
         Networking_InterfaceMedium_Type mediumType = interfaces[i].interfaceMediumType;
@@ -184,18 +207,19 @@ static ExitCode CheckNetworkStatus(char * interface)
             mediumText = "unknown-medium";
             break;
         }
-        Log_Debug("INFO:   interfaceMediumType=%d (%s)\n", mediumType, mediumText);
+        fprintf(stderr, "INFO:   interfaceMediumType=%d (%s)\n", mediumType, mediumText);
 
         // Print the interface connection status
         Networking_InterfaceConnectionStatus status;
         int result = Networking_GetInterfaceConnectionStatus(interfaces[i].interfaceName, &status);
         if (result != 0) {
-            Log_Debug("ERROR: Networking_GetInterfaceConnectionStatus: errno=%d (%s)\n", errno,
+            fprintf(stderr, "ERROR: Networking_GetInterfaceConnectionStatus: errno=%d (%s)\n", errno,
                       strerror(errno));
             return ExitCode_CheckStatus_GetInterfaceConnectionStatus;
         }
-        Log_Debug("INFO:   interfaceStatus=0x%02x\n", status);
+        fprintf(stderr, "INFO:   interfaceStatus=0x%02x\n", status);
     }
+    #endif  /* AS_DEBUG */
 
     free(interfaces);
 
@@ -204,8 +228,8 @@ static ExitCode CheckNetworkStatus(char * interface)
 
 int message(uint16_t id, Message type, char * message) {
     int len = 0;
-    message[0] = (id >> 8) & 0xFF;
-    message[1] = id & 0xFF;
+    message[0] = ((unsigned char)id >> 8) & 0xFF;
+    message[1] = (unsigned char)id & 0xFF;
     len += 2;
 
     switch (type)
@@ -241,4 +265,4 @@ int message(uint16_t id, Message type, char * message) {
     return len;
 }
 
-#endif  /* NETWORK_H_ */
+#endif  /* AS_NETWORK_H_ */
