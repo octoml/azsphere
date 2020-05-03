@@ -3,7 +3,7 @@ import os
 import shutil
 import argparse
 
-def get_log(filename):
+def load_log(filename):
 	data = []
 	with open(filename) as f:
 		for line in f:
@@ -37,5 +37,5 @@ if __name__ == '__main__':
 	parser.add_argument('-d', '--destination', default='')
 	opts = parser.parse_args()
 
-	jsonData = get_log(filename=opts.source)
+	jsonData = load_log(filename=opts.source)
 	log_generate(jsonData, path=opts.destination)
