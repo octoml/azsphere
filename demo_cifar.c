@@ -111,7 +111,6 @@ int main(int argc, char **argv) {
   free(params_data);
   free(input_storage);
   free(graph_data);
-  // free(&input);
 
   float* output_storage = malloc(out_dim0 * out_dim1 * sizeof(float));
   DLTensor output;

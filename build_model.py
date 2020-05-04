@@ -63,18 +63,25 @@ def build_cifar(opts):
     from keras.models import load_model
     import keras
 
-    model = load_model('tuning/model/saved_models/cifar10_ch8.h5')
+    model = load_model('tuning/model/saved_models/cifar10_ch8_best.h5')
     print(model.summary())
 
     shape_dict = {'conv2d_1_input': (1, 3, 32, 32)}
     mod, params = relay.frontend.from_keras(model, shape_dict)
     print(mod)
 
-    # with autotvm.apply_graph_best(graph_opt_sch_file):
     print("Compile...")
-    with relay.build_config(opt_level=3):
-        graph, lib, params = relay.build_module.build(
-            mod, target=TARGET, params=params)
+    if opts.tuned:
+        print("TUNNNNNNNIIIIIIIIIIIIIIIIIIIIINNNNNNNNNNNNGGGGGGGGG")
+        with autotvm.apply_history_best(os.path.join('tuning', 'cifar_best.txt')):
+            with relay.build_config(opt_level=3):
+                graph, lib, params = relay.build_module.build(
+                    mod, target=TARGET, params=params)
+    else:
+        print("NOT TUNNNNNNNIIIIIIIIIIIIIIIIIIIIINNNNNNNNNNNNGGGGGGGGG")
+        with relay.build_config(opt_level=3):
+                graph, lib, params = relay.build_module.build(
+                    mod, target=TARGET, params=params)
 
     lib.save(os.path.join(build_dir, 'cifar_model.o'))
     with open(os.path.join(build_dir, 'cifar_graph.bin'), 'wb') as f_graph:
@@ -448,6 +455,7 @@ if __name__ == '__main__':
     parser.add_argument('--conv2dauto', action='store_true')
     parser.add_argument('--x86', action='store_true')
     parser.add_argument('--cifar', action='store_true')
+    parser.add_argument('--tuned', action='store_true')
     opts = parser.parse_args()
     
     build_dir = os.path.abspath(opts.out_dir)
