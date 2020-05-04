@@ -73,7 +73,7 @@ def build_cifar(opts):
     print("Compile...")
     if opts.tuned:
         print("TUNNNNNNNIIIIIIIIIIIIIIIIIIIIINNNNNNNNNNNNGGGGGGGGG")
-        with autotvm.apply_history_best(os.path.join('tuning', 'cifar_best.txt')):
+        with autotvm.apply_history_best(os.path.join('tuning', 'cifar_best_0.txt')):
             with relay.build_config(opt_level=3):
                 graph, lib, params = relay.build_module.build(
                     mod, target=TARGET, params=params)
