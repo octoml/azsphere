@@ -38,7 +38,9 @@
 #define GRAPH_RUNTIME_MAX_CONTEXTS 1
 /*! Maximum supported nodes in a GraphRuntime */
 // #define GRAPH_RUNTIME_MAX_NODES 400
-#define GRAPH_RUNTIME_MAX_NODES 21
+// #define GRAPH_RUNTIME_MAX_NODES 21
+// #define GRAPH_RUNTIME_MAX_NODES 30
+#define GRAPH_RUNTIME_MAX_NODES 35
 /*! Maximum input nodes in a GraphRuntime */
 // #define GRAPH_RUNTIME_MAX_INPUT_NODES 300
 #define GRAPH_RUNTIME_MAX_INPUT_NODES 30
