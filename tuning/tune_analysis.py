@@ -82,16 +82,23 @@ def azure_to_json(logFile):
 	return runtime
 
 def plot_flops(azure, npi):
+	scale = 1e6 * 1.0
 	azure_flops = []
 	npi_flops = []
 	maxVal = 0
-	for item in azure:
-		npi_item = list(filter(lambda task: task['id'] == item['id'], npi))[0]
-		if npi_item['result'] and item['result']:
-			f0 = item['flop']
-			f1 = npi_item['flop']
-			azure_flops.append(f0)
-			npi_flops.append(f1)
+	if npi:
+		for item in azure:
+			npi_item = list(filter(lambda task: task['id'] == item['id'], npi))[0]
+			if npi_item['result'] and item['result']:
+				f0 = item['flop']
+				f1 = npi_item['flop']
+				azure_flops.append(f0)
+				npi_flops.append(f1)
+	else:
+		for item in azure:
+			if item['result']:
+				f0 = item['flop']
+				azure_flops.append(f0)
 
 	azure_acc = []
 	azure_best = azure_flops[0]
@@ -101,29 +108,34 @@ def plot_flops(azure, npi):
 			azure_best = item
 		else:
 			azure_acc.append(azure_best)
+	azure_plot = [x / scale for x in azure_acc]
 
 	npi_acc = []
-	npi_best = npi_flops[0]
-	for item in npi_flops:
-		if item >= npi_best:
-			npi_acc.append(item)
-			npi_best = item
-		else:
-			npi_acc.append(npi_best)
-
-	scale = 1e6 * 1.0
-	azure_plot = [x / scale for x in azure_acc]
-	npi_plot = [x / scale for x in npi_acc]
-	# plt.subplot(2, 1, 1)
-	plt.plot(azure_plot, 'r--', npi_plot, 'b--')
+	if npi_flops:
+		npi_best = npi_flops[0]
+		for item in npi_flops:
+			if item >= npi_best:
+				npi_acc.append(item)
+				npi_best = item
+			else:
+				npi_acc.append(npi_best)
 	
-	# plt.yscale('log')
+	npi_plot = []
+	if npi_acc:
+		npi_plot = [x / scale for x in npi_acc]
+	
+	if npi_plot:
+		plt.plot(azure_plot, 'r--', npi_plot, 'b--')
+		plt.legend(['Azure', 'NPI'])
+	else:
+		plt.plot(azure_plot, 'r--')
+		# plt.legend(['Azure'])
+	
 	plt.xlim(left=-5)
-	plt.ylim(bottom=0)
+	plt.ylim(bottom=0, top=max(azure_plot)+100)
 	plt.ylabel('MFLOPS')
 	plt.xlabel('Trials')
-	plt.legend(['Azure', 'NPI'])
-
+	
 	plt.subplots_adjust(bottom=0.1, top=0.95, left=0.1, right=0.99)
 	plt.show()
 
@@ -131,14 +143,19 @@ def plot_time(azure, npi):
 	time_azure = []
 	time_npi = []
 	maxVal = 0
-	for item in azure:
-		npi_item = list(filter(lambda task: task['id'] == item['id'], npi))[0]
-		if npi_item['result'] and item['result']:
-			t0 = item['time']
-			t1 = npi_item['time']
-			time_azure.append(t0)
-			time_npi.append(t1)
-
+	if npi:
+		for item in azure:
+			npi_item = list(filter(lambda task: task['id'] == item['id'], npi))[0]
+			if npi_item['result'] and item['result']:
+				t0 = item['time']
+				t1 = npi_item['time']
+				time_azure.append(t0)
+				time_npi.append(t1)
+	else:
+		for item in azure:
+			if item['result']:
+				t0 = item['time']
+				time_azure.append(t0)
 	# azure_norm = [float(i)/max(time_azure) for i in time_azure]
 	# npi_norm = [float(i)/max(time_npi) for i in time_npi]
 	azure_final = time_azure
@@ -146,12 +163,18 @@ def plot_time(azure, npi):
 
 	print("size of plot: " + str(len(time_azure)))
 	print("Azure min task number: " + str(time_azure.index(min(time_azure))) + " and time: " + str(min(time_azure)))
-	print("NPI min task number: " + str(time_npi.index(min(time_npi))) + " and time: " + str(min(time_npi)))
+	if time_npi:
+		print("NPI min task number: " + str(time_npi.index(min(time_npi))) + " and time: " + str(min(time_npi)))
 
 	plt.subplot(2, 1, 1)
-	plt.plot(azure_final, 'r*', npi_final, 'bs')
+	if npi_final:
+		plt.plot(azure_final, 'r*', npi_final, 'bs')
+		plt.legend(['Azure', 'NPI'])
+	else:
+		plt.plot(azure_final, 'r*')
+		plt.legend(['Azure'])
 
-	plt.yscale('log')
+	# plt.yscale('log')
 	plt.xlim(left=-1)
 	plt.ylim(bottom=0)
 	plt.ylabel('Time (ms) (log scale)')
@@ -159,12 +182,13 @@ def plot_time(azure, npi):
 	plt.legend(['Azure', 'NPI'])
 	plt.title("Runtime")
 
-	plt.subplot(2, 1, 2)
-	plt.scatter(x=azure_final, y=npi_final)
-	plt.xlabel('Time Azure (ms)')
-	plt.ylabel('Time NPI (ms)')
-	plt.xlim(left=0)
-	plt.ylim(bottom=0)
+	if npi_final:
+		plt.subplot(2, 1, 2)
+		plt.scatter(x=azure_final, y=npi_final)
+		plt.xlabel('Time Azure (ms)')
+		plt.ylabel('Time NPI (ms)')
+		plt.xlim(left=0)
+		plt.ylim(bottom=0)
 
 	plt.subplots_adjust(bottom=0.1, top=0.95, left=0.1, right=0.99)
 	plt.show()
@@ -197,6 +221,6 @@ if __name__ == '__main__':
 	# print(len(test))
 	# print(statistics.mean(test))
 	# print(statistics.stdev(test))
-
-	# plot_time(azure=azure, npi=npi)
+	print(npi)
+	plot_time(azure=azure, npi=npi)
 	plot_flops(azure=azure, npi=npi)
