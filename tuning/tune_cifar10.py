@@ -12,7 +12,9 @@ import json
 from npi import npi_schedule_convert as schedule_convert
 import pickle
 
-TARGET = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
+# TARGET = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
+# TARGET = tvm.target.create('llvm --system-lib')
+TARGET = None
 device_key = 'azure'
 IP = '0.0.0.0'
 PORT = 5040
@@ -34,7 +36,7 @@ tuning_option = {
     ),
 }
 
-TASK_IND = 3
+TASK_IND = -1
 
 def extract_schedule_cifar10(model=None, layer=0):
     from micro_eval.model.cifar10_cnn import gen_cifar10_cnn
@@ -106,7 +108,7 @@ def generate_schedules(model=None, layer=0, schedule_path=None):
     import keras
 
     if model == 'cifar-10':
-        model = load_model('model/saved_models/cifar10_trained_model.h5')
+        model = load_model('model/saved_models/cifar10_ch8_best.h5')
         print(model.summary())
         print(model.inputs)
 
@@ -135,9 +137,12 @@ def generate_schedules(model=None, layer=0, schedule_path=None):
     with open(os.path.join(schedule_path, "tasks.dump"), 'wb+') as f:
         pickle.dump(tasks, f)
 
+    print(len(tasks))
     for ii in range(len(tasks)):
-        if ii != TASK_IND:
-            continue
+        print(ii, TASK_IND)
+        # if ii != TASK_IND:
+        #     continue
+        print("inside")
         task = tasks[ii]
         task_dir = "task_" + str(ii).zfill(4)
         if not os.path.exists(os.path.join(schedule_path, task_dir)):
@@ -159,27 +164,29 @@ def generate_schedules(model=None, layer=0, schedule_path=None):
             with open(filepath, 'w+') as f:
                 tmp = json.dumps(item)
                 f.write(tmp)
+        # break
 
 # build model and create imagepackage
-def build(build_path, early_break=None):
+def build(opts, build_path):
     tasks_dirs = [dI for dI in os.listdir(build_path) if os.path.isdir(os.path.join(build_path, dI))]
     tasks_dirs.sort()
+    print(tasks_dirs)
+    print(len(tasks_dirs))
 
     with open(os.path.join(build_path, 'tasks.dump'), 'rb') as f:
         tasks = pickle.load(f)
 
     for jj in range(len(tasks_dirs)):
-        if jj != TASK_IND:
+        print(jj, f'    task_{str(TASK_IND).zfill(4)}')
+        if tasks_dirs[jj] != f'task_{str(TASK_IND).zfill(4)}':
             continue
+        print(tasks_dirs[jj])
         task_path = os.path.join(build_path, tasks_dirs[jj])
         list_schedules = os.listdir(task_path)
         list_schedules.sort()
         # print(list_schedules)
 
-        for ii in range(len(list_schedules)):
-            if early_break and ii >= early_break:
-                break
-            
+        for ii in range(len(list_schedules)):            
             export_path = os.path.join(task_path, list_schedules[ii])
             schedule_path = os.path.join(export_path, 'schedule.txt')
             # print(schedule_path)
@@ -200,8 +207,10 @@ def build(build_path, early_break=None):
                            params=params)
             tmp.package()
             del tmp
+            if opts.test:
+                break
+        if opts.test:
             break
-        break
 
 def clear():
     process = subprocess.Popen("azsphere device sideload delete",
@@ -214,7 +223,7 @@ def init():
     clear()
 
 # run on azure sphere and save results
-def run(task_path):
+def run(opts, task_path):
     init()
 
     files = []
@@ -251,10 +260,38 @@ def run(task_path):
         # print("sleeping!")
         time.sleep(1)
         # print("Continue!")
-        break
+        
+        if opts.test:
+            break
 
     clear()
     return 0
+
+def create_best_log(opts, build_path=None, logfile=None):
+    best_index = [60, 21, 104, 137, 12]
+    tasks_dirs = [dI for dI in os.listdir(build_path) if os.path.isdir(os.path.join(build_path, dI))]
+    tasks_dirs.sort()
+    assert(len(best_index)== len(tasks_dirs))
+
+    best_schedules = []
+    for ii in range(len(tasks_dirs)):
+        task = tasks_dirs[ii]
+        task_path = os.path.join(build_path, task)
+        schedule_path = os.path.join(task_path, f'schedule_{str(best_index[ii]).zfill(4)}')
+        schedule_file = os.path.join(schedule_path, "schedule.txt")
+        
+        if not os.path.exists(schedule_file):
+            raise RuntimeError('File not found')
+
+        with open(schedule_file, 'r') as sch_f:
+            new_sch = sch_f.read()
+            best_schedules.insert(0, new_sch)
+    
+    with open(logfile, 'w') as best_file:
+        for ii in range(len(best_schedules)):
+            best_file.write(best_schedules[ii])
+            if ii < len(best_schedules)-1:
+                best_file.write('\n')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -262,21 +299,30 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--build', action='store_true')
     parser.add_argument('-r', '--run', action='store_true')
     parser.add_argument('-s', '--source', default='')
+    parser.add_argument('--test', action='store_true')
+    parser.add_argument('-t', '--task', default=-1)
+    parser.add_argument('--best', action='store_true')
     opts = parser.parse_args()
 
+    TASK_IND = opts.task
+    print('TASK: ', TASK_IND)
     build_dir = 'build'
     
     if opts.generate:
+        TARGET = tvm.target.create('llvm --system-lib')
         generate_schedules(model='cifar-10', layer=0, schedule_path=build_dir)
-    
+
+    TARGET = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
     if opts.build:
-        build(build_path=build_dir)
+        build(opts=opts, build_path=build_dir)
 
     if opts.run:
-        task = f'task_000{TASK_IND}'
+        task = f'task_{str(TASK_IND).zfill(4)}'
         print(f'running task: {task}')
-        run(task_path=os.path.join(build_dir, task))
+        run(opts=opts, task_path=os.path.join(build_dir, task))
 
+    if opts.best:
+        create_best_log(opts=opts, build_path=build_dir, logfile='cifar_best_0.txt')
     # if opts.build:
     #     if not opts.source:
     #         raise

@@ -8,6 +8,7 @@ import argparse
 
 IP = '192.168.0.10'
 PORT = 11000
+sock = None
 
 class NetworkState(Enum):
 	WAITING = 1
@@ -16,10 +17,12 @@ class NetworkState(Enum):
 	TIME = 4
 
 def exitHandler():
+	global sock
 	print("closing socket!")
 	sock.close()
 
 def server_start(opts):
+	global sock
 	# Create a TCP/IP socket
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 

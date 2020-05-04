@@ -41,5 +41,5 @@ clean:
 	rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake rules.ninja build.ninja
 
 cleanall:
-	rm -rf $(build_dir)
+	rm -rf $(build_dir) *.json *.c CMakeLists.txt *.log Makefile
 	
