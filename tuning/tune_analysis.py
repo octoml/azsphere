@@ -4,6 +4,8 @@ import json
 import matplotlib.pyplot as plt
 import statistics
 import numpy as np 
+import os
+import csv
 
 KERNEL = 7
 CI = 3
@@ -193,10 +195,66 @@ def plot_time(azure, npi):
 	plt.subplots_adjust(bottom=0.1, top=0.95, left=0.1, right=0.99)
 	plt.show()
 
+def plot_footprint(build_path=None, runtime_path=None):
+	if (not build_path) or \
+		(not runtime_path):
+		raise ValueError('Build path is not valid!')
+
+	tasks_dirs = [dI for dI in os.listdir(build_path) if os.path.isdir(os.path.join(build_path, dI))]
+	tasks_dirs.sort()
+	num_of_tasks = len(tasks_dirs)
+	all_tasks_size = []
+	for ii in range(len(tasks_dirs)):
+		task_path = os.path.join(build_path, tasks_dirs[ii])
+		
+		schedule_dirs = [dI for dI in os.listdir(task_path) if os.path.isdir(os.path.join(task_path, dI))]
+		schedule_dirs.sort()
+		
+		task_size = []
+		for jj in range(len(schedule_dirs)):
+			schedule_path = os.path.join(task_path, schedule_dirs[jj])
+			output_path = os.path.join(schedule_path, 'build')
+			
+			elf_file = os.path.join(output_path, 'octoml_AS.out')
+			params_file = os.path.join(output_path, 'conv2d_params.bin')
+			graph_file = os.path.join(output_path, 'conv2d_graph.bin')
+
+			elf_size = os.path.getsize(elf_file)
+			params_size = os.path.getsize(params_file)
+			graph_size = os.path.getsize(graph_file)
+			total = sum([elf_size, params_size, graph_size])
+			# print(elf_size, params_size, graph_size)
+			# print([elf_size, params_size, graph_size])
+			# print(total)
+			task_size.append(total)
+
+		all_tasks_size.append(task_size)
+	
+	#create CSV of time and footprint
+	for ii in range(num_of_tasks):
+		azure_results = azure_to_json(os.path.join(runtime_path, f'task_{str(ii)}.dump'))
+
+		time_footprint = []
+		task_footprint = all_tasks_size[ii]
+		for jj in range(len(azure_results)):
+			item = azure_results[jj]
+			time = item['time']
+			size = task_footprint[jj] / 1024	#convert to KB
+			time_footprint.append([time, size])
+
+		csv_path = os.path.join(build_path, f'fooprint_task_{str(ii).zfill(4)}.csv')
+		with open(csv_path, 'w') as csv_file:
+			wr = csv.writer(csv_file, delimiter=',')
+			for item in time_footprint:
+				wr.writerow(item)
+			print(f'File {csv_path} generated!')
+
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-f', '--file', default='')
-	parser.add_argument('-s', '--source', default='')
+	parser.add_argument('-f', '--file', default='', action='store_true')
+	parser.add_argument('-s', '--source', default='', action='store_true')
+	parser.add_argument('--footprint', action='store_true')
 	opts = parser.parse_args()
 
 	azure = []
@@ -207,6 +265,16 @@ if __name__ == '__main__':
 
 	if opts.source:
 		npi = npi_to_json(logFile=opts.source)
+
+	if opts.source or opts.file:
+		plot_time(azure=azure, npi=npi)
+		plot_flops(azure=azure, npi=npi)
+	
+	if opts.footprint:
+		items = plot_footprint(build_path='build',
+							   runtime_path='/home/parallels/azure-sphere/tuning/server/cifar'
+							   )
+		
 
 	# count = 0
 	# for item in npi:
@@ -221,6 +289,3 @@ if __name__ == '__main__':
 	# print(len(test))
 	# print(statistics.mean(test))
 	# print(statistics.stdev(test))
-	print(npi)
-	plot_time(azure=azure, npi=npi)
-	plot_flops(azure=azure, npi=npi)
