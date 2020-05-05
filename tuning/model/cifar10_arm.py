@@ -9,9 +9,46 @@ from keras.callbacks import ModelCheckpoint
 from keras.models import load_model
 import os
 
+# module definition from STM
+# def @main(%data: Tensor[(1, 32, 32, 4), uint8], %mean_data: Tensor[(1, 32, 32, 4), uint8], %conv0_weight: Tensor[(5, 5, 32, 4), int8], %conv0_bias: Tensor[(32), int8], %conv1_weight: Tensor[(5, 5, 32, 32), int8], %conv1_bias: Tensor[(32), int8], %conv2_weight: Tensor[(5, 5, 64, 32), int8], %conv2_bias: Tensor[(64), int8], %dense0_weight: Tensor[(10, 1024), int8], %dense0_bias: Tensor[(10), int8]) -> Tensor[(1, 10), int8] {
+#   %0 = cast(%data, dtype="int16") /* ty=Tensor[(1, 32, 32, 4), int16] */;
+#   %1 = cast(%mean_data, dtype="int16") /* ty=Tensor[(1, 32, 32, 4), int16] */;
+#   %2 = subtract(%0, %1) /* ty=Tensor[(1, 32, 32, 4), int16] */;
+#   %3 = cast(%2, dtype="int8") /* ty=Tensor[(1, 32, 32, 4), int8] */;
+#   %4 = nn.conv2d(%3, %conv0_weight, padding=[2, 2, 2, 2], channels=32, kernel_size=[5, 5], data_layout="NHWC", kernel_layout="HWOI", out_dtype="int32") /* ty=Tensor[(1, 32, 32, 32), int32] */;
+#   %5 = cast(%conv0_bias, dtype="int32") /* ty=Tensor[(32), int32] */;
+#   %6 = nn.bias_add(%4, %5, axis=3) /* ty=Tensor[(1, 32, 32, 32), int32] */;
+#   %7 = right_shift(%6, 9 /* ty=int32 */) /* ty=Tensor[(1, 32, 32, 32), int32] */;
+#   %8 = cast(%7, dtype="int8") /* ty=Tensor[(1, 32, 32, 32), int8] */;
+#   %9 = nn.max_pool2d(%8, pool_size=[3, 3], strides=[2, 2], layout="NHWC", ceil_mode=True) /* ty=Tensor[(1, 16, 16, 32), int8] */;
+#   %10 = nn.relu(%9) /* ty=Tensor[(1, 16, 16, 32), int8] */;
+#   %11 = nn.conv2d(%10, %conv1_weight, padding=[2, 2, 2, 2], channels=32, kernel_size=[5, 5], data_layout="NHWC", kernel_layout="HWOI", out_dtype="int32") /* ty=Tensor[(1, 16, 16, 32), int32] */;
+#   %12 = cast(%conv1_bias, dtype="int32") /* ty=Tensor[(32), int32] */;
+#   %13 = nn.bias_add(%11, %12, axis=3) /* ty=Tensor[(1, 16, 16, 32), int32] */;
+#   %14 = right_shift(%13, 9 /* ty=int32 */) /* ty=Tensor[(1, 16, 16, 32), int32] */;
+#   %15 = cast(%14, dtype="int8") /* ty=Tensor[(1, 16, 16, 32), int8] */;
+#   %16 = nn.relu(%15) /* ty=Tensor[(1, 16, 16, 32), int8] */;
+#   %17 = nn.avg_pool2d(%16, pool_size=[3, 3], strides=[2, 2], layout="NHWC", ceil_mode=True, count_include_pad=True) /* ty=Tensor[(1, 8, 8, 32), int8] */;
+#   %18 = nn.conv2d(%17, %conv2_weight, padding=[2, 2, 2, 2], channels=64, kernel_size=[5, 5], data_layout="NHWC", kernel_layout="HWOI", out_dtype="int32") /* ty=Tensor[(1, 8, 8, 64), int32] */;
+#   %19 = cast(%conv2_bias, dtype="int32") /* ty=Tensor[(64), int32] */;
+#   %20 = nn.bias_add(%18, %19, axis=3) /* ty=Tensor[(1, 8, 8, 64), int32] */;
+#   %21 = right_shift(%20, 9 /* ty=int32 */) /* ty=Tensor[(1, 8, 8, 64), int32] */;
+#   %22 = cast(%21, dtype="int8") /* ty=Tensor[(1, 8, 8, 64), int8] */;
+#   %23 = nn.relu(%22) /* ty=Tensor[(1, 8, 8, 64), int8] */;
+#   %24 = nn.avg_pool2d(%23, pool_size=[3, 3], strides=[2, 2], layout="NHWC", ceil_mode=True, count_include_pad=True) /* ty=Tensor[(1, 4, 4, 64), int8] */;
+#   %25 = nn.batch_flatten(%24) /* ty=Tensor[(1, 1024), int8] */;
+#   %26 = nn.dense(%25, %dense0_weight, units=10, out_dtype="int32") /* ty=Tensor[(1, 10), int32] */;
+#   %27 = cast(%dense0_bias, dtype="int32") /* ty=Tensor[(10), int32] */;
+#   %28 = left_shift(%27, 3 /* ty=int32 */) /* ty=Tensor[(10), int32] */;
+#   %29 = nn.bias_add(%26, %28, axis=-1) /* ty=Tensor[(1, 10), int32] */;
+#   %30 = right_shift(%29, 5 /* ty=int32 */) /* ty=Tensor[(1, 10), int32] */;
+#   cast(%30, dtype="int8") /* ty=Tensor[(1, 10), int8] */
+# }
+
+
 batch_size = 32
 num_classes = 10
-epochs = 2
+epochs = 1
 data_augmentation = True
 num_predictions = 20
 save_dir = os.path.join(os.getcwd(), 'saved_models')
@@ -28,39 +65,31 @@ print(x_test.shape[0], 'test samples')
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
-model = Sequential()
-
+model = Sequential(name='cifar10_arm')
 #conv 0
 model.add(keras.layers.ZeroPadding2D(padding=(2, 2)))
 model.add(Conv2D(32, (5, 5), padding='valid',
                  input_shape=x_train.shape[1:]))
-model.add(Activation('relu'))
-
-#some sort of reduction (right_shift)
 
 #maxpool 0
-model.add(MaxPooling2D(pool_size=(3, 3), strides=(2, 2)))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
 model.add(Activation('relu'))
 
 #conv 1
 model.add(keras.layers.ZeroPadding2D(padding=(2, 2)))
 model.add(Conv2D(32, (5, 5)))
-
-#some sort of reduction (right_shift)
+model.add(Activation('relu'))
 
 # average_pool 0
-model.add(Activation('relu'))
-model.add(AveragePooling2D(pool_size=(3, 3), strides=(2, 2), padding='valid'))
+model.add(AveragePooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid'))
 
 #conv 2
 model.add(keras.layers.ZeroPadding2D(padding=(2, 2)))
 model.add(Conv2D(64, (5, 5)))
-
-#some sort of reduction (right_shift)
+model.add(Activation('relu'))
 
 # average_pool 1
-model.add(Activation('relu'))
-model.add(AveragePooling2D(pool_size=(3, 3), strides=(2, 2), padding='valid'))
+model.add(AveragePooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid'))
 
 #flatten
 model.add(Flatten())
@@ -68,7 +97,6 @@ model.add(Flatten())
 #dense
 model.add(Dense(num_classes))
 model.add(Activation('softmax'))
-#some sort of reduction
 
 model.build(input_shape)
 print(model.summary())
