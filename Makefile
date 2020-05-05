@@ -6,12 +6,32 @@ CMAKE_FLAGS = -G "Ninja" \
 	--no-warn-unused-cli \
 	-DCMAKE_BUILD_TYPE="Debug" \
 	-DCMAKE_MAKE_PROGRAM="ninja" \
-	~/azure-sphere
+	../
 
 build_dir := build
 
-debug_init:
-	# rm -rf $(build_dir)
+copy_dir := schedule_0000
+task_dir := task_0000
+
+# copy:
+# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_model.o build/
+# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_graph.json.c build/
+# 	# cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_params.bin.c build/
+# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_params.bin build/
+# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_data.bin build/
+# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin build/
+# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin build/
+
+# 	# cp -f tuning/build/${task_dir}/${copy_dir}/build/octoml_AS.out build/
+# 	# cp -f tuning/build/${task_dir}/${copy_dir}/build/octoml_AS.imagepackage build/
+
+start:
+	azsphere device app start
+
+stop:
+	azsphere device app stop
+
+delete:
 	azsphere device sideload delete
 
 connect:
@@ -22,7 +42,27 @@ model: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
 convolution: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c
 
 # build image package
+$(build_dir)/hello_imagepackage:
+	@mkdir -p $(@D)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
+	
 $(build_dir)/demo_imagepackage: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
+	@mkdir -p $(@D)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
+$(build_dir)/cifar_imagepackage: $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_graph.json.c $(build_dir)/cifar_params.bin 
+	@mkdir -p $(@D)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
+rebuilt:
+	@mkdir -p $(@D)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
+$(build_dir)/sudo: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.bin $(build_dir)/conv2d_params.bin
+	@mkdir -p $(@D)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
+$(build_dir)/conv2d_net_imagepackage: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c
 	@mkdir -p $(@D)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
@@ -35,6 +75,9 @@ $(build_dir)/test_imagepackage: $(build_dir)/test_model.o
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
 # Serialize graph.json file.
+$(build_dir)/cifar_graph.json.c: $(build_dir)/cifar_graph.json
+	xxd -i $^  > $@
+
 $(build_dir)/graph.json.c: $(build_dir)/graph.json
 	xxd -i $^  > $@
 
@@ -49,11 +92,24 @@ $(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
 	xxd -i $^  > $@
 
 # build model
+$(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_params.bin $(build_dir)/cifar_data.bin $(build_dir)/cifar_output.bin $(build_dir)/id.bin: build_model.py
+	python3 $< -o $(build_dir) --cifar --tuned
+	# --quantize
+
 $(build_dir)/model.o $(build_dir)/graph.json $(build_dir)/params.bin $(build_dir)/cat.bin: build_model.py
 	python3 $< -o $(build_dir) --quantize
 
-$(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json $(build_dir)/conv2d_params.bin $(build_dir)/conv2d_data.bin: build_model.py
-	python3 $< -o $(build_dir) --conv2d
+# $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json $(build_dir)/conv2d_params.bin $(build_dir)/conv2d_data.bin: build_model.py
+# 	python3 $< -o $(build_dir) --conv2d
+
+$(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.bin $(build_dir)/conv2d_params.bin $(build_dir)/conv2d_data.bin:
+	mkdir -p $(build_dir)
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_model.o $(build_dir)
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_graph.bin $(build_dir)
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_params.bin $(build_dir)
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_data.bin $(build_dir)
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin $(build_dir)
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin $(build_dir)
 
 $(build_dir)/test_model.o $(build_dir)/test_graph.json $(build_dir)/test_params.bin $(build_dir)/test_data.bin $(build_dir)/test_output.bin: build_model.py
 	python3 $< -o $(build_dir) --test
