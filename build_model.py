@@ -72,13 +72,18 @@ def build_cifar(opts):
 
     print("Compile...")
     if opts.tuned:
-        print("TUNNNNNNNIIIIIIIIIIIIIIIIIIIIINNNNNNNNNNNNGGGGGGGGG")
+        print("INFO: Tuned model!")
         with autotvm.apply_history_best(os.path.join('tuning', 'cifar_best_0.txt')):
+            if opts.quantize:
+                with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0):
+                    mod = relay.quantize.quantize(mod, params)
+                    print('INFO: Quantized!')
+
             with relay.build_config(opt_level=3):
                 graph, lib, params = relay.build_module.build(
                     mod, target=TARGET, params=params)
     else:
-        print("NOT TUNNNNNNNIIIIIIIIIIIIIIIIIIIIINNNNNNNNNNNNGGGGGGGGG")
+        print("INFO: No Tuning!")
         with relay.build_config(opt_level=3):
                 graph, lib, params = relay.build_module.build(
                     mod, target=TARGET, params=params)
@@ -110,6 +115,11 @@ def build_cifar(opts):
     ## get TVM result on local machine
     mod, params = relay.frontend.from_keras(model, shape_dict)
     local_target = 'llvm --system-lib'
+    
+    if opts.quantize:
+        with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0):
+            mod = relay.quantize.quantize(mod, params)
+
     with relay.build_config(opt_level=3):
         graph, lib, params = relay.build_module.build(
             mod, target=local_target, params=params)
@@ -128,7 +138,8 @@ def build_cifar(opts):
     
     print("TVM Output: " + str(tvm_out.shape))
     print("Keras Output: " + str(keras_predict.shape))
-    np.testing.assert_allclose(tvm_out, keras_predict, rtol=1e-2)
+    if not opts.quantize:
+        np.testing.assert_allclose(tvm_out, keras_predict, rtol=1e-2)
     
     # save TVM results for target
     with open(os.path.join(build_dir, "cifar_data.bin"), "wb") as fp:
