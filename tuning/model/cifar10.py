@@ -5,16 +5,18 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
+from keras.callbacks import ModelCheckpoint
+from keras.models import load_model
 import os
 
 batch_size = 32
 num_classes = 10
 epochs = 1
-data_augmentation = False
+data_augmentation = True
 num_predictions = 20
 save_dir = os.path.join(os.getcwd(), 'saved_models')
 conv2d_ch = 8
-model_name = f'cifar10_ch{conv2d_ch}.h5'
+model_name = f'cifar10_ch{conv2d_ch}'
 
 # The data, split between train and test sets:
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -65,6 +67,8 @@ x_train /= 255
 x_test /= 255
 
 # model.save('cifar10.h5')
+checkpoint = ModelCheckpoint(os.path.join(save_dir, f'{model_name}_best.h5'), monitor='loss', verbose=1,
+    save_best_only=True, mode='auto', period=1)
 
 if not data_augmentation:
     print('Not using data augmentation.')
@@ -114,16 +118,24 @@ else:
                                      batch_size=batch_size),
                         epochs=epochs,
                         validation_data=(x_test, y_test),
-                        workers=4)
+                        workers=4,
+                        callbacks=[checkpoint])
+    
 
 # Save model and weights
 if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
-model_path = os.path.join(save_dir, model_name)
+model_path = os.path.join(save_dir, f'{model_name}.h5')
 model.save(model_path)
 print('Saved trained model at %s ' % model_path)
 
-# Score trained model.
+# Score best trained model.
+best_model = load_model(os.path.join(save_dir, f'{model_name}_best.h5'))
+scores = best_model.evaluate(x_test, y_test, verbose=1)
+print('Best Test loss:', scores[0])
+print('Best Test accuracy:', scores[1])
+
+# Score last model
 scores = model.evaluate(x_test, y_test, verbose=1)
 print('Test loss:', scores[0])
 print('Test accuracy:', scores[1])
