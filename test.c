@@ -40,6 +40,11 @@
 
 #include "bundle.h"
 
+#define data_file     "build/test_data.bin"
+#define output_file   "build/test_output.bin"
+#define param_file    "build/test_params.bin"
+#define graph_file    "build/test_graph.json"
+
 /// <summary>
 /// Exit codes for this application. These are used for the
 /// application exit code.  They they must all be between zero and 255,
@@ -53,7 +58,7 @@ typedef enum {
 
 int main(int argc, char **argv) {
   Log_Debug("Starting CMake Hello World application...\n");
-  assert(argc == 5 && "Usage: test <data.bin> <output.bin> <graph.json> <params.bin>");
+  // assert(argc == 5 && "Usage: test <data.bin> <output.bin> <graph.json> <params.bin>");
   
   int fd = GPIO_OpenAsOutput(SAMPLE_LED, GPIO_OutputMode_PushPull, GPIO_Value_High);
   if (fd < 0) {
@@ -70,37 +75,37 @@ int main(int argc, char **argv) {
   off_t fs;
   
   // Read graph.json
-  fid = Storage_OpenFileInImagePackage(argv[3]);
+  fid = Storage_OpenFileInImagePackage(graph_file);
   if (fid == -1) {
-    Log_Debug("Error: Openning %s failed!", argv[3]);
+    Log_Debug("Error: Openning %s failed!", graph_file);
     goto failed;
   }
 
   fs = lseek(fid, 0, SEEK_END);
   if (fs == -1) {
-    Log_Debug("Error: File %s size!", argv[3]);
+    Log_Debug("Error: File %s size!", graph_file);
     goto failed;
   }
   lseek(fid, 0, SEEK_SET);
-  Log_Debug("%s size: %d", argv[3], (int)fs);
+  Log_Debug("%s size: %d", graph_file, (int)fs);
   json_data = (char*)malloc(fs);
   read(fid, json_data, fs);
   close(fid);
 
   // read params.bin
-  fid = Storage_OpenFileInImagePackage(argv[4]);
+  fid = Storage_OpenFileInImagePackage(param_file);
   if (fid == -1) {
-    Log_Debug("Error: Openning %s failed!", argv[4]);
+    Log_Debug("Error: Openning %s failed!", param_file);
     goto failed;
   }
 
   fs = lseek(fid, 0, SEEK_END);
   if (fs == -1) {
-    Log_Debug("Error: File %s size!", argv[4]);
+    Log_Debug("Error: File %s size!", param_file);
     goto failed;
   }
   lseek(fid, 0, SEEK_SET);
-  Log_Debug("%s size: %d", argv[4], (int)fs);
+  Log_Debug("%s size: %d", param_file, (int)fs);
   params_data = (char*)malloc(fs);
   read(fid, params_data, fs);
   params_size = (uint64_t) fs;
@@ -115,37 +120,37 @@ int main(int argc, char **argv) {
 
   // Read data.bin
   float input_storage[10 * 5];
-  fid = Storage_OpenFileInImagePackage(argv[1]);
+  fid = Storage_OpenFileInImagePackage(data_file);
   if (fid == -1) {
-    Log_Debug("Error: Openning %s failed!", argv[1]);
+    Log_Debug("Error: Openning %s failed!", data_file);
     goto failed;
   }
 
   fs = lseek(fid, 0, SEEK_END);
   if (fs == -1) {
-    Log_Debug("Error: File %s size!", argv[1]);
+    Log_Debug("Error: File %s size!", data_file);
     goto failed;
   }
   lseek(fid, 0, SEEK_SET);
-  Log_Debug("%s size: %d", argv[1], (int)fs);
+  Log_Debug("%s size: %d", data_file, (int)fs);
   read(fid, &input_storage, fs);
   close(fid);
 
 // Read output.bin
   float result_storage[10 * 5];
-  fid = Storage_OpenFileInImagePackage(argv[2]);
+  fid = Storage_OpenFileInImagePackage(output_file);
   if (fid == -1) {
-    Log_Debug("Error: Openning %s failed!", argv[2]);
+    Log_Debug("Error: Openning %s failed!", output_file);
     goto failed;
   }
 
   fs = lseek(fid, 0, SEEK_END);
   if (fs == -1) {
-    Log_Debug("Error: File %s size!", argv[2]);
+    Log_Debug("Error: File %s size!", output_file);
     goto failed;
   }
   lseek(fid, 0, SEEK_SET);
-  Log_Debug("%s size: %d", argv[2], (int)fs);
+  Log_Debug("%s size: %d", output_file, (int)fs);
   read(fid, &result_storage, fs);
   close(fid);
 
@@ -157,7 +162,7 @@ int main(int argc, char **argv) {
   DLDataType dtype = {kDLFloat, 32, 1};
   input.dtype = dtype;
   int64_t shape [2] = {10, 5};
-  input.shape = &shape;
+  input.shape = shape;
   input.strides = NULL;
   input.byte_offset = 0;
 
@@ -176,7 +181,7 @@ int main(int argc, char **argv) {
   DLDataType out_dtype = {kDLFloat, 32, 1};
   output.dtype = out_dtype;
   int64_t out_shape [2] = {10, 5};
-  output.shape = &out_shape;
+  output.shape = out_shape;
   output.strides = NULL;
   output.byte_offset = 0;
   
@@ -195,11 +200,11 @@ int main(int argc, char **argv) {
 
   Log_Debug("timing: %.2f ms (create), %.2f ms (set_input), %.2f ms (run), "
          "%.2f ms (get_output), %.2f ms (destroy)\n",
-         (t1.tv_sec-t0.tv_sec)*1000000 + (t1.tv_usec-t0.tv_usec)/1000.f,
-         (t2.tv_sec-t1.tv_sec)*1000000 + (t2.tv_usec-t1.tv_usec)/1000.f,
-         (t3.tv_sec-t2.tv_sec)*1000000 + (t3.tv_usec-t2.tv_usec)/1000.f,
-         (t4.tv_sec-t3.tv_sec)*1000000 + (t4.tv_usec-t3.tv_usec)/1000.f,
-         (t5.tv_sec-t4.tv_sec)*1000000 + (t5.tv_usec-t4.tv_usec)/1000.f);
+         (t1.tv_sec-t0.tv_sec)*1000 + (t1.tv_usec-t0.tv_usec)/1000.f,
+         (t2.tv_sec-t1.tv_sec)*1000 + (t2.tv_usec-t1.tv_usec)/1000.f,
+         (t3.tv_sec-t2.tv_sec)*1000 + (t3.tv_usec-t2.tv_usec)/1000.f,
+         (t4.tv_sec-t3.tv_sec)*1000 + (t4.tv_usec-t3.tv_usec)/1000.f,
+         (t5.tv_sec-t4.tv_sec)*1000 + (t5.tv_usec-t4.tv_usec)/1000.f);
 
   free(json_data);
   free(params_data);
