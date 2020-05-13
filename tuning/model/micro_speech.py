@@ -1,3 +1,6 @@
+####
+## model from: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/micro/examples/micro_speech
+###
 import tvm
 from tvm import te
 from tvm import relay
