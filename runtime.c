@@ -33,6 +33,7 @@
 
 /*! Maximum inputs in a GraphRuntimeNode */
 // #define GRAPH_RUNTIME_NODE_MAX_INPUTS 300
+// #define GRAPH_RUNTIME_NODE_MAX_INPUTS 10
 #define GRAPH_RUNTIME_NODE_MAX_INPUTS 10
 /*! Maximum supported contexts in a GraphRuntime */
 #define GRAPH_RUNTIME_MAX_CONTEXTS 1
@@ -40,13 +41,15 @@
 // #define GRAPH_RUNTIME_MAX_NODES 400
 // #define GRAPH_RUNTIME_MAX_NODES 21
 // #define GRAPH_RUNTIME_MAX_NODES 30
-#define GRAPH_RUNTIME_MAX_NODES 35
+#define GRAPH_RUNTIME_MAX_NODES 65
 /*! Maximum input nodes in a GraphRuntime */
 // #define GRAPH_RUNTIME_MAX_INPUT_NODES 300
-#define GRAPH_RUNTIME_MAX_INPUT_NODES 30
+// #define GRAPH_RUNTIME_MAX_INPUT_NODES 30
+#define GRAPH_RUNTIME_MAX_INPUT_NODES 40
 /*! Maximum nodes in a GraphRuntime for quick entry indexing */
 // #define GRAPH_RUNTIME_MAX_NODE_ROW_PTR 300
-#define GRAPH_RUNTIME_MAX_NODE_ROW_PTR 30
+// #define GRAPH_RUNTIME_MAX_NODE_ROW_PTR 30
+#define GRAPH_RUNTIME_MAX_NODE_ROW_PTR 65
 /*! Maximum output entries in a GraphRuntime */
 // #define GRAPH_RUNTIME_MAX_OUTPUTS 300
 #define GRAPH_RUNTIME_MAX_OUTPUTS 10

@@ -37,6 +37,9 @@ delete:
 connect:
 	sudo /opt/azurespheresdk/Tools/azsphere_connect.sh
 
+install_ethernet:
+	azsphere device sideload deploy --imagepackage images/enc28j60-isu0-int5.imagepackage
+
 model: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
 
 convolution: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c
@@ -51,6 +54,10 @@ $(build_dir)/demo_imagepackage: $(build_dir)/model.o $(build_dir)/graph.json.c $
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
 $(build_dir)/cifar_imagepackage: $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_graph.json.c $(build_dir)/cifar_params.bin 
+	@mkdir -p $(@D)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
+$(build_dir)/keyword_imagepackage: $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin 
 	@mkdir -p $(@D)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
@@ -75,6 +82,9 @@ $(build_dir)/test_imagepackage: $(build_dir)/test_model.o
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
 # Serialize graph.json file.
+$(build_dir)/keyword_graph.json.c: $(build_dir)/keyword_graph.json
+	xxd -i $^  > $@
+
 $(build_dir)/cifar_graph.json.c: $(build_dir)/cifar_graph.json
 	xxd -i $^  > $@
 
@@ -92,8 +102,12 @@ $(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
 	xxd -i $^  > $@
 
 # build model
+$(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin $(build_dir)/keyword_data.bin $(build_dir)/keyword_output.bin: build_model.py
+	python3 $< -o $(build_dir) --keyword --tuned
+
 $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_params.bin $(build_dir)/cifar_data.bin $(build_dir)/cifar_output.bin $(build_dir)/id.bin: build_model.py
-	python3 $< -o $(build_dir) --cifar --tuned
+	python3 $< -o $(build_dir) --cifar
+	# --tuned
 	# --quantize
 
 $(build_dir)/model.o $(build_dir)/graph.json $(build_dir)/params.bin $(build_dir)/cat.bin: build_model.py

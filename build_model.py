@@ -1,5 +1,4 @@
 """Creates TVM modules for Azure Sphere."""
-
 import argparse
 import os
 import logging
@@ -58,36 +57,66 @@ def build_module(opts):
     with open(os.path.join(build_dir, 'params.bin'), 'wb') as f_params:
         f_params.write(relay.save_param_dict(params))
 
-def build_cifar(opts):
-    from keras.datasets import cifar10
-    from keras.models import load_model
-    import keras
+def build_cifar(opts, model_name):
+    from tuning.model.cifar10_relay import get_cifar_relay
+    from tuning.model.cifar10_arm import get_cifar_keras, gen_custom_cifar_keras
 
-    model = load_model('tuning/model/saved_models/cifar10_ch8_best.h5')
-    print(model.summary())
+    if model_name == 'cifar-10':
+        # cifar_path = 'tuning/model/saved_models/cifar10_ch8_best.h5'
+        # model_input_name = 'conv2d_1_input'
+        model_input_name = 'cifar10_arm_input'
+        # cifar_path = 'tuning/model/saved_models/cifar10_arm_best.h5'
+        shape_dict = {model_input_name: (1, 3, 32, 32)}
+        # model = get_cifar_keras(cifar_path, shape_dict)
 
-    shape_dict = {'conv2d_1_input': (1, 3, 32, 32)}
-    mod, params = relay.frontend.from_keras(model, shape_dict)
-    print(mod)
+        model = gen_custom_cifar_keras(shape_dict)
+        mod, params = tvm.relay.frontend.from_keras(model, shape_dict)
 
-    print("Compile...")
-    if opts.tuned:
-        print("INFO: Tuned model!")
-        with autotvm.apply_history_best(os.path.join('tuning', 'cifar_best_0.txt')):
-            if opts.quantize:
-                with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0):
-                    mod = relay.quantize.quantize(mod, params)
-                    print('INFO: Quantized!')
+        print("Compile...")
+        if opts.tuned:
+            print("INFO: Tuned model!")
+            with autotvm.apply_history_best(os.path.join('tuning', 'cifar_arm_footprint_min.txt')):
+                if opts.quantize:
+                    with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0):
+                        mod = relay.quantize.quantize(mod, params)
+                        print('INFO: Quantized!')
 
+                with relay.build_config(opt_level=3):
+                    graph, lib, params = relay.build_module.build(
+                        mod, target=TARGET, params=params)
+        else:
+            print("INFO: No Tuning!")
             with relay.build_config(opt_level=3):
-                graph, lib, params = relay.build_module.build(
-                    mod, target=TARGET, params=params)
-    else:
-        print("INFO: No Tuning!")
-        with relay.build_config(opt_level=3):
-                graph, lib, params = relay.build_module.build(
-                    mod, target=TARGET, params=params)
+                    graph, lib, params = relay.build_module.build(
+                        mod, target=TARGET, params=params)
 
+    elif model_name == 'cifar-10-relay':
+        mod, params = get_cifar_relay()
+        print('type:            ', type(mod))
+        print(mod.get_global_type_var)
+        shape_dict = {'data': (1, 3, 32, 32)}
+
+        print("Compile...")
+        if opts.tuned:
+            print("INFO: Tuned model!")
+            with autotvm.apply_history_best(os.path.join('tuning', 'cifar_relay_footprint_min.txt')):
+                if opts.quantize:
+                    with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0):
+                        mod = relay.quantize.quantize(mod, params)
+                        print('INFO: Quantized!')
+
+                with relay.build_config(opt_level=3):
+                    graph, lib, params = relay.build_module.build(
+                        mod, target=TARGET, params=params)
+        else:
+            print("INFO: No Tuning!")
+            with relay.build_config(opt_level=3):
+                    graph, lib, params = relay.build_module.build(
+                        mod, target=TARGET, params=params)
+    else:
+        raise ValueError('Wrong model name!')
+
+    #save model, graph, params
     lib.save(os.path.join(build_dir, 'cifar_model.o'))
     with open(os.path.join(build_dir, 'cifar_graph.bin'), 'wb') as f_graph:
         f_graph.write(bytes(graph, 'utf-8'))
@@ -97,55 +126,125 @@ def build_cifar(opts):
         f_params.write(relay.save_param_dict(params))
 
     #create input and result
-    num_classes = 10
-    (_, _), (x_test, y_test) = cifar10.load_data()
+    if model_name == 'cifar-10':
+        import keras
+        from keras.datasets import cifar10
+        # from keras.models import load_model
 
-    x_test = x_test.astype('float32')
-    x_test /= 255
-    y_test = keras.utils.to_categorical(y_test, num_classes)
+        num_classes = 10
+        # model = load_model(cifar_path)
+        (_, _), (x_test, y_test) = cifar10.load_data()
 
-    test_x_sample = x_test[0:1,:,:,:]
-    test_y_sample = y_test[0:1,:]
-    print('x_test_sample shape:', test_x_sample.shape)
-    print('y_test_sample shape:', test_y_sample.shape)
-    scores = model.evaluate(test_x_sample, test_y_sample, verbose=1)
-    keras_predict = model.predict(test_x_sample)
-    print(keras_predict)
-    
-    ## get TVM result on local machine
-    mod, params = relay.frontend.from_keras(model, shape_dict)
-    local_target = 'llvm --system-lib'
-    
-    if opts.quantize:
-        with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0):
-            mod = relay.quantize.quantize(mod, params)
+        x_test = x_test.astype('float32')
+        x_test /= 255
+        y_test = keras.utils.to_categorical(y_test, num_classes)
 
-    with relay.build_config(opt_level=3):
-        graph, lib, params = relay.build_module.build(
-            mod, target=local_target, params=params)
+        test_x_sample = x_test[0:1,:,:,:]
+        test_y_sample = y_test[0:1,:]
+        print('x_test_sample shape:', test_x_sample.shape)
+        print('y_test_sample shape:', test_y_sample.shape)
+        scores = model.evaluate(test_x_sample, test_y_sample, verbose=1)
+        keras_predict = model.predict(test_x_sample)
+        print(keras_predict)
+        
+        ## get TVM result on local machine
+        mod, params = relay.frontend.from_keras(model, shape_dict)
+        local_target = 'llvm --system-lib'
+        
+        if opts.quantize:
+            with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0):
+                mod = relay.quantize.quantize(mod, params)
 
-    ctx = tvm.context(local_target, 0)
-    ## create module
-    module = tvm.contrib.graph_runtime.create(graph, lib, ctx)
-    tvm_sample = test_x_sample.transpose([0, 3, 1, 2])
-    print("tvm_sample shape: ", tvm_sample.shape)
-    module.set_input('conv2d_1_input', tvm_sample)
-    module.set_input(**params)
-    ## run
-    module.run()
-    # get output
-    tvm_out = module.get_output(0).asnumpy()
-    
-    print("TVM Output: " + str(tvm_out.shape))
-    print("Keras Output: " + str(keras_predict.shape))
-    if not opts.quantize:
-        np.testing.assert_allclose(tvm_out, keras_predict, rtol=1e-2)
-    
-    # save TVM results for target
+        with relay.build_config(opt_level=3):
+            graph, lib, params = relay.build_module.build(
+                mod, target=local_target, params=params)
+
+        ctx = tvm.context(local_target, 0)
+        ## create module
+        module = tvm.contrib.graph_runtime.create(graph, lib, ctx)
+        tvm_sample = test_x_sample.transpose([0, 3, 1, 2])
+        # print("tvm_sample shape: ", tvm_sample.shape)
+        module.set_input(model_input_name, tvm_sample)
+        module.set_input(**params)
+        ## run
+        module.run()
+        # get output
+        tvm_out = module.get_output(0).asnumpy()
+        
+        print("TVM Output: " + str(tvm_out.shape))
+        print("Keras Output: " + str(keras_predict.shape))
+        if not opts.quantize:
+            np.testing.assert_allclose(tvm_out, keras_predict, rtol=1e-2)
+    elif model_name == 'cifar-10-relay':
+        tvm_sample = np.array([1])
+        tvm_out = np.array([1])
+    else:
+        raise ValueError('Wrong model name!')
+
+    # save data and output
     with open(os.path.join(build_dir, "cifar_data.bin"), "wb") as fp:
         fp.write(tvm_sample.astype(np.float32).tobytes())
     with open(os.path.join(build_dir, "cifar_output.bin"), "wb") as fp:
         fp.write(tvm_out.astype(np.float32).tobytes())
+
+    generate_id()
+
+def build_keyword_model(opts):
+    from tuning.model.arm_keyword import get_module, prepare_input
+
+
+    model_input_name = 'Mfcc'
+    shape_dict = {model_input_name: (1, 49, 10)}
+
+    mod = get_module('tuning/model/keyword_model/keyword_module.pickle')
+    print(mod)
+    
+    print("Compile...")
+    if opts.tuned:
+        print("INFO: Tuned model!")
+        with autotvm.apply_history_best(os.path.join('tuning', 'keyword_footprint_min.txt')):
+            with relay.build_config(opt_level=3):
+                graph, lib, out_params = relay.build_module.build(
+                    mod, target=TARGET)
+    else:
+        print("INFO: No Tuning!")
+        with relay.build_config(opt_level=3):
+                graph, lib, out_params = relay.build_module.build(
+                    mod, target=TARGET)
+
+    #save model, graph, params
+    model_name = 'keyword'
+    lib.save(os.path.join(build_dir, f'{model_name}_model.o'))
+    with open(os.path.join(build_dir, f'{model_name}_graph.bin'), 'wb') as f_graph:
+        f_graph.write(bytes(graph, 'utf-8'))
+    with open(os.path.join(build_dir, f'{model_name}_graph.json'), 'w') as f_graph_json:
+        f_graph_json.write(graph)
+    with open(os.path.join(build_dir, f'{model_name}_params.bin'), 'wb') as f_params:
+        f_params.write(relay.save_param_dict(out_params))
+
+    #create input and result
+    local_target = 'llvm --system-lib'
+    with relay.build_config(opt_level=3):
+        graph, lib, out_params = relay.build_module.build(
+            mod, target=local_target)
+
+    input_data = prepare_input()
+    ctx = tvm.context(local_target, 0)
+    m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
+    m.set_input('Mfcc', input_data)
+    m.set_input(**out_params)
+    m.run()
+    predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
+    predictions = predictions[0]
+    
+    # print("TVM Output: " + str(tvm_out.shape))
+    # print("Keras Output: " + str(keras_predict.shape))
+
+    # save data and output
+    with open(os.path.join(build_dir, f'{model_name}_data.bin'), "wb") as fp:
+        fp.write(input_data.astype(np.float32).tobytes())
+    with open(os.path.join(build_dir, f'{model_name}_output.bin'), "wb") as fp:
+        fp.write(predictions.astype(np.float32).tobytes())
 
     generate_id()
 
@@ -466,6 +565,7 @@ if __name__ == '__main__':
     parser.add_argument('--conv2dauto', action='store_true')
     parser.add_argument('--x86', action='store_true')
     parser.add_argument('--cifar', action='store_true')
+    parser.add_argument('--keyword', action='store_true')
     parser.add_argument('--tuned', action='store_true')
     opts = parser.parse_args()
     
@@ -520,7 +620,10 @@ if __name__ == '__main__':
             }
         tune_and_evaluate(opts, tuning_option)
     elif opts.cifar:
-        build_cifar(opts)
+        build_cifar(opts, model_name='cifar-10')
+        # build_cifar(opts, model_name='cifar-10-relay')
+    elif opts.keyword:
+        build_keyword_model(opts)
     else:
         build_module(opts)
         build_inputs(opts)

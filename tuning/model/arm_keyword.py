@@ -1,3 +1,6 @@
+#####
+## This model is from: https://github.com/ARM-software/ML-KWS-for-MCU 
+#####
 import argparse
 import tvm
 from tvm import te
@@ -21,9 +24,10 @@ from tensorflow.python.framework import tensor_util
 import tvm.relay.testing.tf as tf_testing
 import pickle
 
-from downcast import downcast_int8
+# from model.downcast import downcast_int8
 
-
+DEBUG_LOG = False
+DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 def export_module(opts):
     # Base location for model related files.
@@ -39,9 +43,9 @@ def export_module(opts):
 
     # Target settings
     # Use these commented settings to build for cuda.
-    #layout = "NCHW"
+    layout = "NCHW"
     #ctx = tvm.gpu(0)
-    layout = None
+    # layout = None
     # ctx = tvm.cpu(0)
 
     ######################################################################
@@ -66,8 +70,9 @@ def export_module(opts):
         os.makedirs(build_dir)
 
     ##save original TF graph
-    with open(os.path.join(build_dir, f'{model_name}_graph_original.log'), 'w') as orig_file:
-        orig_file.write(str(graph_def))
+    if DEBUG_LOG:
+        with open(os.path.join(build_dir, f'{model_name}_graph_original.log'), 'w') as orig_file:
+            orig_file.write(str(graph_def))
 
     ##remove pre-processing nodes and fix begining
     nodes = []
@@ -118,9 +123,10 @@ def export_module(opts):
 
     new_graph = tf_compat_v1.GraphDef()
     new_graph.node.extend(nodes)
-    ##save new graph
-    with open(os.path.join(build_dir, f'{model_name}_graph_new.log'), 'w') as new_graph_log:
-        new_graph_log.write(str(new_graph))
+    ##log new graph
+    if DEBUG_LOG:
+        with open(os.path.join(build_dir, f'{model_name}_graph_new.log'), 'w') as new_graph_log:
+            new_graph_log.write(str(new_graph))
 
     ##get mod and params with new graph
     shape_dict = {'Mfcc': (1, 49, 10)}
@@ -128,11 +134,11 @@ def export_module(opts):
                                                 layout=layout,
                                                 shape=shape_dict)
 
-    with open(os.path.join(build_dir, f'{model_name}_mod.log'), 'w') as mod_file:
-        mod_file.write(str(mod))
-
-    with open(os.path.join(build_dir, f'{model_name}_param.log'), 'w') as param_log:
-        param_log.write(str(params))
+    if DEBUG_LOG:
+        with open(os.path.join(build_dir, f'{model_name}_mod.log'), 'w') as mod_file:
+            mod_file.write(str(mod))
+        with open(os.path.join(build_dir, f'{model_name}_param.log'), 'w') as param_log:
+            param_log.write(str(params))
 
     #quantization
     if opts.quantize:
@@ -142,22 +148,26 @@ def export_module(opts):
             mod = relay.quantize.quantize(mod, params)
             # skip_conv_layers=[]
 
-        with open(os.path.join(build_dir, f'{model_name}_mod_quantized.log'), 'w') as mod_log:
-            mod_log.write(str(mod))
+        if DEBUG_LOG:
+            with open(os.path.join(build_dir, f'{model_name}_mod_quantized.log'), 'w') as mod_log:
+                mod_log.write(str(mod))
 
     if opts.cast:
         #Downcast to int8
         func = downcast_int8(mod)
         mod = tvm.IRModule.from_expr(func)
 
-        #save module after cast
-        with open(os.path.join(build_dir, f'{model_name}_mod_cast.log'), 'w') as mod_log:
-            mod_log.write(str(mod))
+        #log module after cast
+        if DEBUG_LOG:
+            with open(os.path.join(build_dir, f'{model_name}_mod_cast.log'), 'w') as mod_log:
+                mod_log.write()
 
     #save module
-    # with open(f'{opts.out_dir}/keyword_module.pickle', 'wb') as h1:
-    #     pickle.dump(mod, h1, protocol=pickle.HIGHEST_PROTOCOL)
-    # print('INFO: module saved!')
+    with open(f'{DIR_PATH}/keyword_model/keyword_module.pickle', 'wb') as h1:
+        pickle.dump(mod, h1, protocol=pickle.HIGHEST_PROTOCOL)
+    # with open(f'keyword_model/keyword_module.txt', 'w') as f:
+    #     f.write(str(mod))
+    print('INFO: module saved!')
 
     # with open(f'{opts.out_dir}/keyword_params.pickle', 'wb') as h2:
     #     pickle.dump(params, h2, protocol=pickle.HIGHEST_PROTOCOL)
@@ -176,11 +186,9 @@ def prepare_input():
                             desired_samples=16000,
                             name='decoded_sample_data')
 
-        print(type(wav_decoder[0]))
-        print(type(wav_decoder[1]))
-        print(len(wav_decoder))
-        # wav_flatten = tf.layers.Flatten(wav_decoder)
-        # print(wav_flatten)
+        # print(type(wav_decoder[0]))
+        # print(type(wav_decoder[1]))
+        # print(len(wav_decoder))
         spectrum = audio_ops.audio_spectrogram(input=wav_decoder[0],
                                             window_size=640,
                                             stride=320,
@@ -194,11 +202,11 @@ def prepare_input():
                                dct_coefficient_count=10, 
                                name='Mfcc')
 
-        t = sess.run(final,
-        feed_dict={wav_filename_placeholder: 'keyword_model/silence.wav'})
-        print(f'Data shape: {t.shape}')
+        data = sess.run(final,
+        feed_dict={wav_filename_placeholder: f'{DIR_PATH}/keyword_model/silence.wav'})
+        print(f'Data shape: {data.shape}')
 
-    return t
+    return data
 
 
 def load_labels(filename):
@@ -207,14 +215,8 @@ def load_labels(filename):
 
 def build(opts, mod=None, params=None):
     # target = opts.target
-    target = 'llvm'
-    target_host = 'llvm'
+    target = 'llvm --system-lib'
     # target = 'llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib'
-
-    # with open(f'{opts.out_dir}/keyword_module.pickle', 'rb') as handle:
-    #     mod = pickle.load(handle)
-    # with open(f'{opts.out_dir}/keyword_params.pickle', 'rb') as handle:
-    #     params = pickle.load(handle)
     
     build_dir = opts.out_dir
     if not os.path.exists(build_dir):
@@ -226,24 +228,27 @@ def build(opts, mod=None, params=None):
 
     #build relay
     if opts.quantize:
+        with open(f'{DIR_PATH}/keyword_model/keyword_module.pickle', 'rb') as handle:
+            mod = pickle.load(handle)
+
         with relay.build_config(opt_level=3):
-            graph, lib, params = relay.build(mod,
+            graph, lib, out_params = relay.build(mod,
                                             target=target)
     else:
         with relay.build_config(opt_level=3):
-            graph, lib, params = relay.build(mod,
+            graph, lib, out_params = relay.build(mod,
                                             target=target,
                                             params=params)
 
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
     m.set_input('Mfcc', input_data)
-    m.set_input(**params)
+    m.set_input(**out_params)
     m.run()
     predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
 
     print(predictions)
     predictions = predictions[0]
-    labels = load_labels('keyword_model/labels.txt')
+    labels = load_labels(f'{DIR_PATH}/keyword_model/labels.txt')
     print(labels)
 
     num_top_predictions = 12
@@ -261,9 +266,14 @@ def build(opts, mod=None, params=None):
     with open(os.path.join(build_dir, f'{model_name}_graph.json'), 'w') as f_graph_json:
         f_graph_json.write(graph)
     with open(os.path.join(build_dir, f'{model_name}_params.bin'), 'wb') as f_params:
-        f_params.write(relay.save_param_dict(params))
+        f_params.write(relay.save_param_dict(out_params))
 
     return lib, graph, params
+
+def get_module(filename):
+    with open(filename, 'rb') as handle:
+        mod = pickle.load(handle)
+    return mod
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -274,6 +284,8 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--target', default='llvm --system-lib')
     opts = parser.parse_args()
 
-    mod, params = export_module(opts)
-    build(opts, mod, params)
-    # prepare_input()
+    if opts.build:
+        build(opts)
+    else:
+        mod, params = export_module(opts)
+        build(opts, mod, params)

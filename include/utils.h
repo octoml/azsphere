@@ -4,6 +4,10 @@
 #include <stdio.h>
 
 #define AS_DEBUG    0
+#define NETWORKING  0
+
+
+
 
 int ReadID(const char * filename, uint16_t * id) {
   size_t fs;
