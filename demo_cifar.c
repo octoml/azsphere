@@ -15,8 +15,12 @@
 #include <tvm/runtime/c_runtime_api.h>
 
 #include "bundle.h"
-#include "network.h"
 #include "utils.h"
+#include "exitcode.h"
+
+#if NETWORKING
+#include "network.h"
+#endif
 
 // Convolution
 #define in_dim0     1
@@ -27,7 +31,7 @@
 #define out_dim0    1
 #define out_dim1    10
 
-#define NUM_EXP     1000
+#define NUM_EXP     10
 
 static ExitCode exitCode = ExitCode_Success;
 #define interface     "eth0"
@@ -61,7 +65,7 @@ int main(int argc, char **argv) {
   }
   GPIO_SetValue(fd, GPIO_Value_High);
 
-
+  #if NETWORKING
   exitCode = NetworkEnable(interface);
   exitCode = ConfigureNetworkInterfaceWithStaticIp(interface,
                                                  "192.168.0.20",
@@ -69,14 +73,17 @@ int main(int argc, char **argv) {
                                                  "192.168.0.1");
 
   int socket = OpenIpV4Socket(serverIP, serverPort, SOCK_STREAM, &exitCode);
+  #endif
 
   // Read id
   ReadID(id_file, &id);
 
+  #if NETWORKING
   char msg [20];
   int len;
   len = message(id, Message_START, msg);
   send(socket , msg , (size_t)len, 0);
+  #endif
 
   // Read params
   char* params_data;
@@ -89,6 +96,10 @@ int main(int argc, char **argv) {
   gettimeofday(&t0, 0);
   auto *handle = tvm_runtime_create(graph_data, params_data, params_size);
   gettimeofday(&t1, 0);
+
+  //graph and params not required anymore
+  free(graph_data);
+  free(params_data);
 
   // Read data
   float* input_storage;
@@ -105,8 +116,9 @@ int main(int argc, char **argv) {
   input.shape = shape;
   input.strides = NULL;
   input.byte_offset = 0;
-
-  tvm_runtime_set_input(handle, "conv2d_1_input", &input);
+  
+  // tvm_runtime_set_input(handle, "conv2d_1_input", &input);
+  tvm_runtime_set_input(handle, "cifar10_arm_input", &input);
 
   duration = 0;
   for (int ii=0; ii<NUM_EXP; ii++) {
@@ -119,9 +131,8 @@ int main(int argc, char **argv) {
   }
   duration = duration / (float)(NUM_EXP);
 
-  free(params_data);
+  //input not required anymore
   free(input_storage);
-  free(graph_data);
 
   float* output_storage = malloc(out_dim0 * out_dim1 * sizeof(float));
   DLTensor output;
@@ -158,6 +169,7 @@ int main(int argc, char **argv) {
     }
   }
 
+  #if NETWORKING
   len = message(id, Message_RESULT, msg);
   msg[len] = ',';
   if (result) {
@@ -170,6 +182,7 @@ int main(int argc, char **argv) {
   msg[len+2] = '\n';
   len += 3;
   send(socket , msg , (size_t)len, 0);
+  #endif
 
   #if AS_DEBUG
   Log_Debug("timing: %.2f ms (create), %.2f ms (set_input), %.2f ms (run), "
@@ -181,7 +194,7 @@ int main(int argc, char **argv) {
          (float)(t5.tv_sec-t4.tv_sec)*1000 + (float)(t5.tv_usec-t4.tv_usec)/1000.f);
   #endif  /* AS_DEBUG */
 
-  // float duration = (float)(t3.tv_sec-t2.tv_sec)*1000 + (float)(t3.tv_usec-t2.tv_usec)/1000.f;
+  #if NETWORKING
   len = message(id, Message_TIME, msg);
   msg[len] = ',';
   len += 1;
@@ -201,6 +214,7 @@ int main(int argc, char **argv) {
   len += 1;
   send(socket , msg , (size_t)len, 0);
   shutdown(socket, 2);
+  #endif
 
   const struct timespec sleepTime = {.tv_sec = 1, .tv_nsec = 0};
   while (true) {
