@@ -136,8 +136,11 @@ def export_module(opts):
 
     #quantization
     if opts.quantize:
-        with relay.quantize.qconfig(calibrate_mode='global_scale', global_scale=8.0, skip_conv_layers=[]):
+        with relay.quantize.qconfig(calibrate_mode='global_scale', 
+                                    global_scale=4.0, 
+                                    skip_conv_layers=[]):
             mod = relay.quantize.quantize(mod, params)
+            # skip_conv_layers=[]
 
         with open(os.path.join(build_dir, f'{model_name}_mod_quantized.log'), 'w') as mod_log:
             mod_log.write(str(mod))
@@ -213,37 +216,36 @@ def build(opts, mod=None, params=None):
     # with open(f'{opts.out_dir}/keyword_params.pickle', 'rb') as handle:
     #     params = pickle.load(handle)
     
-    print(mod)
-    print(type(mod))
-    #build relay
-    with relay.build_config(opt_level=3):
-        graph, lib, params = relay.build(mod,
-                                        target_host=target_host,
-                                        target=target,
-                                        params=params)
-
-    build_dir = 'build'
+    build_dir = opts.out_dir
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
-    
-    ##prepare input data
-    input_data = prepare_input()
 
-    #run model in TVM
+    ##prepare input data and run config
+    input_data = prepare_input()
     ctx = tvm.context(target, 0)
+
+    #build relay
+    if opts.quantize:
+        with relay.build_config(opt_level=3):
+            graph, lib, params = relay.build(mod,
+                                            target=target)
+    else:
+        with relay.build_config(opt_level=3):
+            graph, lib, params = relay.build(mod,
+                                            target=target,
+                                            params=params)
+
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
     m.set_input('Mfcc', input_data)
     m.set_input(**params)
-    ## run
     m.run()
-    # get output
     predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
+
     print(predictions)
     predictions = predictions[0]
     labels = load_labels('keyword_model/labels.txt')
     print(labels)
 
-    # import pdb; pdb.set_trace()
     num_top_predictions = 12
     top_k = predictions.argsort()[-num_top_predictions:][::-1]
     for node_id in top_k:
@@ -252,18 +254,20 @@ def build(opts, mod=None, params=None):
       print('%s (score = %.5f)' % (human_string, score))
 
     #save model, graph, params
-    # lib.save(os.path.join(build_dir, f'{model_name}_model.o'))
-    # with open(os.path.join(build_dir, f'{model_name}_graph.bin'), 'wb') as f_graph:
-    #     f_graph.write(bytes(graph, 'utf-8'))
-    # with open(os.path.join(build_dir, f'{model_name}_graph.json'), 'w') as f_graph_json:
-    #     f_graph_json.write(graph)
-    # with open(os.path.join(build_dir, f'{model_name}_params.bin'), 'wb') as f_params:
-    #     f_params.write(relay.save_param_dict(params))
+    model_name = 'keyword'
+    lib.save(os.path.join(build_dir, f'{model_name}_model.o'))
+    with open(os.path.join(build_dir, f'{model_name}_graph.bin'), 'wb') as f_graph:
+        f_graph.write(bytes(graph, 'utf-8'))
+    with open(os.path.join(build_dir, f'{model_name}_graph.json'), 'w') as f_graph_json:
+        f_graph_json.write(graph)
+    with open(os.path.join(build_dir, f'{model_name}_params.bin'), 'wb') as f_params:
+        f_params.write(relay.save_param_dict(params))
 
+    return lib, graph, params
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-o', '--out-dir', default='.')
+    parser.add_argument('-o', '--out-dir', default='build')
     parser.add_argument('-q', '--quantize', action='store_true')
     parser.add_argument('-c', '--cast', action='store_true')
     parser.add_argument('-b', '--build', action='store_true')
