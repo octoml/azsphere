@@ -37,5 +37,6 @@
         "cstdio": "c",
         "string.h": "c",
         "errno.h": "c"
-    }
+    },
+    "git.ignoreLimitWarning": true
 }
