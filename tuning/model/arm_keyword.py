@@ -28,6 +28,7 @@ import pickle
 
 DEBUG_LOG = False
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
+OPTS = None
 
 def export_module(opts):
     # Base location for model related files.
@@ -36,10 +37,6 @@ def export_module(opts):
     model_file_name = f'{model_name}.pb'
     model_dir = os.path.join(repo_base, 'DS_CNN')
     model_url = os.path.join(model_dir, model_file_name)
-
-    # Human readable text for labels
-    label_map = 'labels.txt'
-    label_map_url = os.path.join(repo_base, label_map)
 
     # Target settings
     # Use these commented settings to build for cuda.
@@ -65,7 +62,7 @@ def export_module(opts):
         with tf_compat_v1.Session() as sess:
             graph_def = tf_testing.AddShapesToGraphDef(sess, 'labels_softmax')
 
-    build_dir = 'build'
+    build_dir = os.path.join(DIR_PATH, 'build')
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
 
@@ -101,7 +98,6 @@ def export_module(opts):
         or node.op == 'Mfcc' \
         or node.op == 'Placeholder' \
         or node.op == 'wav_data':
-        # or node.op == 'Softmax':
             removed_count += 1
             pass
         else:
@@ -142,6 +138,7 @@ def export_module(opts):
 
     #quantization
     if opts.quantize:
+        print('INFO: Quantizing...')
         with relay.quantize.qconfig(calibrate_mode='global_scale', 
                                     global_scale=4.0, 
                                     skip_conv_layers=[]):
@@ -165,13 +162,10 @@ def export_module(opts):
     #save module
     with open(f'{DIR_PATH}/keyword_model/keyword_module.pickle', 'wb') as h1:
         pickle.dump(mod, h1, protocol=pickle.HIGHEST_PROTOCOL)
-    # with open(f'keyword_model/keyword_module.txt', 'w') as f:
-    #     f.write(str(mod))
+    with open(f'{DIR_PATH}/keyword_model/keyword_module.txt', 'w') as f:
+        f.write(mod.astext())
     print('INFO: module saved!')
 
-    # with open(f'{opts.out_dir}/keyword_params.pickle', 'wb') as h2:
-    #     pickle.dump(params, h2, protocol=pickle.HIGHEST_PROTOCOL)
-    # print('INFO: params saved!')
     return mod, params
 
 def prepare_input():
@@ -189,6 +183,7 @@ def prepare_input():
         # print(type(wav_decoder[0]))
         # print(type(wav_decoder[1]))
         # print(len(wav_decoder))
+
         spectrum = audio_ops.audio_spectrogram(input=wav_decoder[0],
                                             window_size=640,
                                             stride=320,
@@ -258,34 +253,105 @@ def build(opts, mod=None, params=None):
       score = predictions[node_id]
       print('%s (score = %.5f)' % (human_string, score))
 
-    #save model, graph, params
-    model_name = 'keyword'
-    lib.save(os.path.join(build_dir, f'{model_name}_model.o'))
-    with open(os.path.join(build_dir, f'{model_name}_graph.bin'), 'wb') as f_graph:
-        f_graph.write(bytes(graph, 'utf-8'))
-    with open(os.path.join(build_dir, f'{model_name}_graph.json'), 'w') as f_graph_json:
-        f_graph_json.write(graph)
-    with open(os.path.join(build_dir, f'{model_name}_params.bin'), 'wb') as f_params:
-        f_params.write(relay.save_param_dict(out_params))
+    return lib, graph, out_params
 
-    return lib, graph, params
+def test(target):
+    lib, graph, out_params = build(OPTS, mod=None, params=None)
+    ctx = tvm.context(target, 0)
+    m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
+
+    #get test data
+    num_of_samples = 1000
+    test_data, test_label = get_dataset(num_of_samples)
+
+    #eval data
+    corrects = 0
+    count = 0
+    for test, label in zip(test_data, test_label):
+        print(count)
+        count += 1
+        # import pdb; pdb.set_trace()
+        input_data = test.reshape((1, 49, 10))
+        m.set_input('Mfcc', input_data)
+        m.set_input(**out_params)
+        m.run()
+        predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
+        predictions = predictions[0]
+        exp_ind = np.argmax(label)
+        pred_ind = np.argmax(predictions)
+        if pred_ind == exp_ind:
+            corrects += 1
+
+    acc = corrects/(num_of_samples * 1.0)
+    print(acc)
+    return acc
 
 def get_module(filename):
     with open(filename, 'rb') as handle:
         mod = pickle.load(handle)
     return mod
 
+def get_dataset(num_of_samples):
+    ##export ARM KWS repo to PYTHON PATH
+    import input_data
+    import models
+
+    wanted_words = 'yes,no,up,down,left,right,on,off,stop,go'
+
+
+    model_settings = models.prepare_model_settings(
+        label_count=len(input_data.prepare_words_list(wanted_words.split(','))),
+        sample_rate=16000,
+        clip_duration_ms=1000,
+        window_size_ms=40.0,
+        window_stride_ms=20.0,
+        dct_coefficient_count=10
+      )
+
+    audio_processor = input_data.AudioProcessor(
+        data_url='http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz',
+        data_dir='/tmp/speech_dataset/',
+        silence_percentage=10.0,
+        unknown_percentage=10.0,
+        wanted_words=wanted_words.split(','),
+        validation_percentage=10,
+        testing_percentage=10,
+        model_settings=model_settings
+        )
+
+    print(audio_processor)
+
+    set_size = audio_processor.set_size('testing')
+    batch_size = num_of_samples
+    sess = tf.InteractiveSession()
+
+    tf.logging.info('set_size=%d', set_size)
+    total_accuracy = 0
+    total_conf_matrix = None
+    # for i in range(0, set_size, batch_size):
+    data, label = audio_processor.get_data(
+        batch_size, 0, model_settings, 0.0, 0.0, 0, 'testing', sess)
+    
+    return data, label
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--out-dir', default='build')
     parser.add_argument('-q', '--quantize', action='store_true')
+    parser.add_argument('--export', action='store_true')
     parser.add_argument('-c', '--cast', action='store_true')
     parser.add_argument('-b', '--build', action='store_true')
     parser.add_argument('-t', '--target', default='llvm --system-lib')
-    opts = parser.parse_args()
+    parser.add_argument('--test', action='store_true')
+    parser.add_argument('--debug', action='store_true')
+    OPTS = parser.parse_args()
+    DEBUG_LOG = OPTS.debug
 
-    if opts.build:
-        build(opts)
-    else:
-        mod, params = export_module(opts)
-        build(opts, mod, params)
+    if OPTS.export:
+        mod, params = export_module(OPTS)
+        
+    if OPTS.build:
+        build(OPTS)
+
+    if OPTS.test:
+        test(target='llvm --system-lib')
