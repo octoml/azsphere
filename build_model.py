@@ -225,14 +225,14 @@ def build_keyword_model(opts):
     #create input and result
     local_target = 'llvm --system-lib'
     with relay.build_config(opt_level=3):
-        graph, lib, out_params = relay.build_module.build(
+        graph_test, lib_test, params_test = relay.build_module.build(
             mod, target=local_target)
 
     input_data = prepare_input()
     ctx = tvm.context(local_target, 0)
-    m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
+    m = tvm.contrib.graph_runtime.create(graph_test, lib_test, ctx)
     m.set_input('Mfcc', input_data)
-    m.set_input(**out_params)
+    m.set_input(**params_test)
     m.run()
     predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
     predictions = predictions[0]
