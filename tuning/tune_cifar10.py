@@ -1,16 +1,18 @@
 import shutil
 import os
 import subprocess
+import argparse
+import time
+import json
+import pickle
+
 import tvm
 from tvm import autotvm
 import tvm.relay as relay 
 from tvm.autotvm.tuner import XGBTuner, GATuner, RandomTuner, GridSearchTuner
-import argparse
+
 from azure import AzureSphere
-import time
-import json
 from npi import npi_schedule_convert as schedule_convert
-import pickle
 
 # TARGET = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
 # TARGET = tvm.target.create('llvm --system-lib')
@@ -104,19 +106,22 @@ def task_to_schedule(task,
     return schedules
 
 def generate_schedules(model=None, layer=0, schedule_path=None):
-    from keras.models import load_model
-    import keras
+    from model.cifar10_relay import get_cifar_relay
+    from model.cifar10_arm import get_cifar_keras
 
-    if model == 'cifar-10':
-        model = load_model('model/saved_models/cifar10_ch8_best.h5')
-        print(model.summary())
-        print(model.inputs)
+    global TASK_IND
 
-        shape_dict = {'conv2d_1_input': (1, 3, 32, 32)}
-        mod, params = relay.frontend.from_keras(model, shape_dict)
-        print(mod)
-        
-        # print(params)
+    if model == 'cifar-10-keras':
+        # shape_dict = {'conv2d_1_input': (1, 3, 32, 32)}
+        shape_dict = {'cifar10_arm_input': (1, 3, 32, 32)}
+        mod, params = get_cifar_keras('model/saved_models/cifar10_arm_best.h5',
+                                      shape_dict)
+
+        with tvm.target.build_config(opt_level=3, disable_vectorize=True):
+            tasks = autotvm.task.extract_from_program(mod['main'], params, TARGET)
+        print(f'extracted {len(tasks)} tasks: {tasks}')
+    elif model == 'cifar-10-relay':
+        mod, params = get_cifar_relay()
         with tvm.target.build_config(opt_level=3, disable_vectorize=True):
             tasks = autotvm.task.extract_from_program(mod['main'], params, TARGET)
         print(f'extracted {len(tasks)} tasks: {tasks}')
@@ -140,9 +145,10 @@ def generate_schedules(model=None, layer=0, schedule_path=None):
     print(len(tasks))
     for ii in range(len(tasks)):
         print(ii, TASK_IND)
-        # if ii != TASK_IND:
-        #     continue
-        print("inside")
+
+        if ii != TASK_IND:
+            continue
+
         task = tasks[ii]
         task_dir = "task_" + str(ii).zfill(4)
         if not os.path.exists(os.path.join(schedule_path, task_dir)):
@@ -178,9 +184,11 @@ def build(opts, build_path):
 
     for jj in range(len(tasks_dirs)):
         print(jj, f'    task_{str(TASK_IND).zfill(4)}')
+
         if tasks_dirs[jj] != f'task_{str(TASK_IND).zfill(4)}':
             continue
         print(tasks_dirs[jj])
+        
         task_path = os.path.join(build_path, tasks_dirs[jj])
         list_schedules = os.listdir(task_path)
         list_schedules.sort()
@@ -268,7 +276,9 @@ def run(opts, task_path):
     return 0
 
 def create_best_log(opts, build_path=None, logfile=None):
-    best_index = [60, 21, 104, 137, 12]
+    # best_index = [60, 21, 104, 137, 12]   #best time for cifar
+    # best_index = [0, 0, 0, 0]   #best footprint for cifar keras full model
+    best_index = [0, 0, 0, 4]   #best footprint for cifar relay
     tasks_dirs = [dI for dI in os.listdir(build_path) if os.path.isdir(os.path.join(build_path, dI))]
     tasks_dirs.sort()
     assert(len(best_index)== len(tasks_dirs))
@@ -292,6 +302,7 @@ def create_best_log(opts, build_path=None, logfile=None):
             best_file.write(best_schedules[ii])
             if ii < len(best_schedules)-1:
                 best_file.write('\n')
+    print(f'file {logfile} generated!')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -304,13 +315,12 @@ if __name__ == '__main__':
     parser.add_argument('--best', action='store_true')
     opts = parser.parse_args()
 
-    TASK_IND = opts.task
-    print('TASK: ', TASK_IND)
+    TASK_IND = int(opts.task)
     build_dir = 'build'
     
     if opts.generate:
         TARGET = tvm.target.create('llvm --system-lib')
-        generate_schedules(model='cifar-10', layer=0, schedule_path=build_dir)
+        generate_schedules(model='cifar-10-relay', layer=0, schedule_path=build_dir)
 
     TARGET = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
     if opts.build:
@@ -322,13 +332,4 @@ if __name__ == '__main__':
         run(opts=opts, task_path=os.path.join(build_dir, task))
 
     if opts.best:
-        create_best_log(opts=opts, build_path=build_dir, logfile='cifar_best_0.txt')
-    # if opts.build:
-    #     if not opts.source:
-    #         raise
-    #     build(export_path=build_dir, 
-    #         schedule_path=opts.source,
-    #         early_break=None)
-
-    # if opts.run:
-    #     run(task_path=build_dir)
+        create_best_log(opts=opts, build_path=build_dir, logfile='cifar_relay_footprint_min.txt')
