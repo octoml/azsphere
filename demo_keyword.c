@@ -18,6 +18,7 @@
 #include "bundle.h"
 #include "utils.h"
 #include "exitcode.h"
+#include "config.c"
 
 #if NETWORKING
 #include "network.h"
@@ -46,7 +47,7 @@ static uint16_t id;
 
 int main(int argc, char **argv) {
   #if AS_DEBUG
-  Log_Debug("Starting TVM Conv2d Test...\n");
+  Log_Debug("Starting TVM Keyword demo...\n");
   #endif  /* AS_DEBUG */
 
   struct timeval t0, t1, t2, t3, t4, t5;
