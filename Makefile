@@ -37,8 +37,16 @@ delete:
 connect:
 	sudo /opt/azurespheresdk/Tools/azsphere_connect.sh
 
+enable_development:
+	azsphere device enable-development
+
 install_ethernet:
-	azsphere device sideload deploy --imagepackage images/enc28j60-isu0-int5.imagepackage
+	azsphere image-package pack-board-config --preset lan-enc28j60-isu0-int5 --output enc28j60-isu0-int5.imagepackage
+	azsphere device sideload deploy --imagepackage enc28j60-isu0-int5.imagepackage
+	rm -f enc28j60-isu0-int5.imagepackage
+
+remove_ethernet:
+	azsphere device sideload delete --componentID 1cf5f2f3-19a8-4782-9330-3ab046b95e89
 
 model: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
 
