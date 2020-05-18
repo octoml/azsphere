@@ -11,19 +11,19 @@ CMAKE_FLAGS = -G "Ninja" \
 build_dir := build
 
 copy_dir := schedule_0000
-task_dir := task_0000
+task_dir := task_0003
 
-# copy:
-# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_model.o build/
-# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_graph.json.c build/
-# 	# cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_params.bin.c build/
-# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_params.bin build/
-# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_data.bin build/
-# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin build/
-# 	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin build/
+copy:
+	@mkdir -p ${build_dir}
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_model.o build/
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_graph.bin build/
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_params.bin build/
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_data.bin build/
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin build/
+	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin build/
 
-# 	# cp -f tuning/build/${task_dir}/${copy_dir}/build/octoml_AS.out build/
-# 	# cp -f tuning/build/${task_dir}/${copy_dir}/build/octoml_AS.imagepackage build/
+program:
+	azsphere device sideload deploy --imagepackage $(build_dir)/octoml_AS.imagepackage
 
 start:
 	azsphere device app start
@@ -112,6 +112,7 @@ $(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
 # build model
 $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin $(build_dir)/keyword_data.bin $(build_dir)/keyword_output.bin: build_model.py
 	python3 $< -o $(build_dir) --keyword --tuned
+	--footprint
 
 $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_params.bin $(build_dir)/cifar_data.bin $(build_dir)/cifar_output.bin $(build_dir)/id.bin: build_model.py
 	python3 $< -o $(build_dir) --cifar
