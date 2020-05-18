@@ -15,12 +15,12 @@
 #include <tvm/runtime/c_runtime_api.h>
 #include <float.h>
 
+#include "config.c"
 #include "bundle.h"
 #include "utils.h"
 #include "exitcode.h"
-#include "config.c"
 
-#if NETWORKING
+#if AS_NETWORKING
 #include "network.h"
 #endif
 
@@ -32,7 +32,7 @@
 #define out_dim0    1
 #define out_dim1    12
 
-#define NUM_EXP     1
+#define NUM_EXP     1000
 
 static ExitCode exitCode = ExitCode_Success;
 #define interface     "eth0"
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
   }
   GPIO_SetValue(fd, GPIO_Value_High);
 
-  #if NETWORKING
+  #if AS_NETWORKING
   exitCode = NetworkEnable(interface);
   exitCode = ConfigureNetworkInterfaceWithStaticIp(interface,
                                                  "192.168.0.20",
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
   // Read id
   ReadID(id_file, &id);
 
-  #if NETWORKING
+  #if AS_NETWORKING
   char msg [20];
   int len;
   len = message(id, Message_START, msg);
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
   fprintf(stdout, "The maximum position in output vector is: %d, with max-value %f.\n",
          max_index, max_iter);
   
-  #if NETWORKING
+  #if AS_NETWORKING
   len = message(id, Message_RESULT, msg);
   msg[len] = ',';
   if (result) {
@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
          (float)(t5.tv_sec-t4.tv_sec)*1000 + (float)(t5.tv_usec-t4.tv_usec)/1000.f);
   #endif  /* AS_DEBUG */
 
-  #if NETWORKING
+  #if AS_NETWORKING
   len = message(id, Message_TIME, msg);
   msg[len] = ',';
   len += 1;
