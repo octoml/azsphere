@@ -190,7 +190,7 @@ def build_cifar(opts, model_name):
     generate_id()
 
 def build_keyword_model(opts):
-    from tuning.model.arm_keyword import get_module, prepare_input
+    from tuning.model.keyword_spotting import get_module, prepare_input
 
 
     model_input_name = 'Mfcc'
@@ -201,11 +201,17 @@ def build_keyword_model(opts):
     
     print("Compile...")
     if opts.tuned:
-        print("INFO: Tuned model!")
-        with autotvm.apply_history_best(os.path.join('tuning', 'keyword_footprint_min.txt')):
+        print("INFO: Model tunning for runtime!")
+        with autotvm.apply_history_best(os.path.join('tuning', 'keyword_runtime_min.txt')):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
                     mod, target=TARGET)
+    elif opts.footprint:
+        print("INFO: Model tuning for footprint!")
+        with autotvm.apply_history_best(os.path.join('tuning', 'keyword_footprint_min.txt')):
+            with relay.build_config(opt_level=3):
+                graph, lib, out_params = relay.build_module.build(
+                    mod, target=TARGET)  
     else:
         print("INFO: No Tuning!")
         with relay.build_config(opt_level=3):
@@ -228,6 +234,9 @@ def build_keyword_model(opts):
         graph_test, lib_test, params_test = relay.build_module.build(
             mod, target=local_target)
 
+    with open('build/graph.log', 'w') as f:
+        f.write(str(graph))
+
     input_data = prepare_input()
     ctx = tvm.context(local_target, 0)
     m = tvm.contrib.graph_runtime.create(graph_test, lib_test, ctx)
@@ -236,9 +245,6 @@ def build_keyword_model(opts):
     m.run()
     predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
     predictions = predictions[0]
-    
-    # print("TVM Output: " + str(tvm_out.shape))
-    # print("Keras Output: " + str(keras_predict.shape))
 
     # save data and output
     with open(os.path.join(build_dir, f'{model_name}_data.bin'), "wb") as fp:
@@ -567,6 +573,7 @@ if __name__ == '__main__':
     parser.add_argument('--cifar', action='store_true')
     parser.add_argument('--keyword', action='store_true')
     parser.add_argument('--tuned', action='store_true')
+    parser.add_argument('--footprint', action='store_true')
     opts = parser.parse_args()
     
     build_dir = os.path.abspath(opts.out_dir)
