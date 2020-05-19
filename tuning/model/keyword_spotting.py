@@ -326,13 +326,10 @@ def get_module(filename):
     return mod
 
 def get_dataset(num_of_samples):
-    ##export ARM KWS repo to PYTHON PATH
     import input_data
     import models
 
     wanted_words = 'yes,no,up,down,left,right,on,off,stop,go'
-
-
     model_settings = models.prepare_model_settings(
         label_count=len(input_data.prepare_words_list(wanted_words.split(','))),
         sample_rate=16000,
@@ -341,7 +338,6 @@ def get_dataset(num_of_samples):
         window_stride_ms=20.0,
         dct_coefficient_count=10
       )
-
     audio_processor = input_data.AudioProcessor(
         data_url='http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz',
         data_dir='/tmp/speech_dataset/',
@@ -354,7 +350,6 @@ def get_dataset(num_of_samples):
         )
 
     print(audio_processor)
-
     set_size = audio_processor.set_size('testing')
     batch_size = num_of_samples
     sess = tf.InteractiveSession()
