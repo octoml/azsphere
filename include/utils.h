@@ -7,7 +7,7 @@
 static int DEBUG_SOCKET = -1;
 
 
-#if AS_NETWORKING
+#if AS_ETHERNET_DEBUG
 int fprintf(FILE * file, const char * format, ...)
 {
     va_list args;
@@ -202,15 +202,5 @@ int Read_File_Float(const char * filename, float** data) {
   read(fid, *data, fs);
   close(fid);
 }
-
-
-
-
-
-
-
-
-
-
 
 #endif  /* AS_UTILS_H_ */

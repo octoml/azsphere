@@ -11,12 +11,13 @@ typedef enum {
     Message_START       = 0,
     Message_TIME        = 1,
     Message_RESULT      = 2,
+    Message_READY       = 3,
 } Message;
 
 static void ReportError(const char *desc);
 
 
-static ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName,
+ExitCode ConfigureNetworkInterfaceWithStaticIp(const char *interfaceName,
                                                       char * ipAddress,
                                                       char * subnet,
                                                       char * gateway 
@@ -85,7 +86,7 @@ int OpenIpV4Socket(char * ip, uint16_t port, int sockType, ExitCode *callerExitC
     return retFd;
 }
 
-static void ReportError(const char *desc)
+void ReportError(const char *desc)
 {
     #if AS_DEBUG
     fprintf(stderr, "ERROR: TCP server: \"%s\", errno=%d (%s)\n", desc, errno, strerror(errno));
@@ -259,6 +260,14 @@ int message(uint16_t id, Message type, char * message) {
         message[len+3] = 'S';
         len += 4;
         break;
+    case Message_READY:
+        message[len] = 'r';
+        message[len+1] = 'e';
+        message[len+2] = 'a';
+        message[len+3] = 'd';
+        message[len+4] = 'y';
+        message[len+5] = '\n';
+        len += 6;
     default:
         break;
     }
