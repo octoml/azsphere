@@ -119,71 +119,175 @@ class AzureSphere():
 		self.isBuild = False
 
 	def build_model(self, task, schedule_log, batch_size=1, target=None):
-		# print(task.name)
-		# print(task.args)
 		if task.name == 'dense_nopack.x86':
 			A_param = task.args[0]
 			A_shape = A_param[1]
+			A_type 	= A_param[2]
+
 			W_param = task.args[1]
 			W_shape = W_param[1]
-			dtype = task.args[3]
+			W_type 	= W_param[2]
 
-			A = relay.var('A', shape=A_shape, dtype=dtype)
-			W = relay.var('W', shape=W_shape, dtype=dtype)
-			B = relay.op.nn.nn.dense(A, W)
+			out_type = task.args[3]
 
-			a_data = np.random.uniform(size=A_shape).astype('float32')
-			w_data = np.random.uniform(size=W_shape).astype('float32')
+			A = relay.var('A', shape=A_shape, dtype=A_type)
+			W = relay.var('W', shape=W_shape, dtype=W_type)
+			B = relay.op.nn.nn.dense(A, W, out_dtype=out_type)
+
+			if 'int' in A_type:
+				a_data = np.random.randint(low=np.iinfo(A_type).min, high=np.iinfo(A_type).max, 
+											size=A_shape, dtype=A_type)
+			elif 'float' in A_type:
+				a_data = np.random.uniform(size=A_shape).astype(A_type)
+			else:
+				raise ValueError('A_type not impelemented')
+
+			if 'int' in W_type:
+				w_data = np.random.randint(low=np.iinfo(W_type).min, high=np.iinfo(W_type).max, 
+										size=W_shape, dtype=W_type)
+			elif 'float' in W_type:
+				w_data = np.random.uniform(size=W_shape).astype(W_type)
+			else:
+				raise ValueError('W_type not impelemented')
+
 			func = relay.Function([A, W], B)
 			params = {"W": w_data}
 			mod = tvm.IRModule.from_expr(func)
-
 			b_np = np.matmul(a_data, w_data.transpose())
-			# print(a_data.shape)
-			# print(w_data.shape)
-			# print(b_np.shape)
 
 		elif task.name == 'conv2d_NCHWc.x86':
 			A_param = task.args[0]
 			A_shape = A_param[1]
+			A_type 	= A_param[2]
+
 			W_param = task.args[1]
 			W_shape = W_param[1]
-			dtype = task.args[7]
-			strides = task.args[4]
-			pads = task.args[3]
-			kernel_shape = (W_shape[2], W_shape[3])
+			W_type 	= W_param[2]
 			
-			# print('padding: ', pads)
-			# print('kernel: ', kernel_shape)
+			out_type = task.args[7]
 
-			A = relay.var('A', shape=A_shape, dtype=dtype)
-			W = relay.var('W', shape=W_shape, dtype=dtype)
+			strides = task.args[2]
+			pads = task.args[3]
+			dilation = task.args[4]
+			kernel_shape = (W_shape[2], W_shape[3])
+
+			A = relay.var('A', shape=A_shape, dtype=A_type)
+			W = relay.var('W', shape=W_shape, dtype=W_type)
 			B = relay.op.nn.nn.conv2d(A, W,
 									strides=strides,
 									padding=pads,
+									dilation=dilation,
 									kernel_size=kernel_shape, 
 									data_layout='NCHW', 
 									kernel_layout='OIHW',
 									out_layout='',
-									out_dtype='')
+									out_dtype=out_type)
 
-			a_data = np.random.uniform(size=A_shape).astype(dtype)
-			w_data = np.random.uniform(size=W_shape).astype(dtype)
+			if 'int' in A_type:
+				a_data = np.random.randint(low=np.iinfo(A_type).min, high=np.iinfo(A_type).max, 
+											size=A_shape, dtype=A_type)
+			elif 'float' in A_type:
+				a_data = np.random.uniform(size=A_shape).astype(A_type)
+			else:
+				raise ValueError('A_type not impelemented')
+
+			if 'int' in W_type:
+				w_data = np.random.randint(low=np.iinfo(W_type).min, high=np.iinfo(W_type).max, 
+										size=W_shape, dtype=W_type)
+				# b_np = conv2d_nchw_python(a_data, w_data, strides, pads).astype('int32')
+			elif 'float' in W_type:
+				w_data = np.random.uniform(size=W_shape).astype(W_type)
+				# b_np = conv2d_nchw_python(a_data, w_data, strides, pads).astype('float32')
+			else:
+				raise ValueError('W_type not impelemented')
+			
 			func = relay.Function([A, W], B)
 			params = {"W": w_data}
 			mod = tvm.IRModule.from_expr(func)
 
-			b_np = conv2d_nchw_python(a_data, w_data, strides, pads)
+			#generate output
+			local_target = 'llvm --system-lib'
+			ctx = tvm.context(local_target, 0)
+			with relay.build_config(opt_level=3):
+				test_graph, test_lib, test_params = relay.build(mod,
+																target=local_target,
+																params=params)
+			m = tvm.contrib.graph_runtime.create(test_graph, test_lib, ctx)
+			m.set_input('A', a_data)
+			m.set_input(**test_params)
+			m.run()
+			predictions = m.get_output(0).asnumpy()
+			b_np = predictions
+
+		elif task.name == 'depthwise_conv2d_NCHWc.x86':
+			A_param = task.args[0]
+			A_shape = A_param[1]
+			A_type 	= A_param[2]
+
+			W_param = task.args[1]
+			W_shape = W_param[1]
+			W_type 	= W_param[2]
+			
+			data_layout = task.args[5]
+			out_type = task.args[7]
+
+			strides = task.args[2]	#originally 4
+			pads = task.args[3]
+			dilation = task.args[4]
+			kernel_shape = (W_shape[2], W_shape[3])
+
+			A = relay.var('A', shape=A_shape, dtype=A_type)
+			W = relay.var('W', shape=W_shape, dtype=W_type)
+
+			B = relay.op.nn.nn.conv2d(
+				data=A, weight=W, strides=strides, padding=pads, dilation=dilation, groups=W_shape[0],
+				channels=W_shape[0], kernel_size=kernel_shape, data_layout=data_layout, kernel_layout="OIHW",
+				out_layout="", out_dtype=out_type
+			)
+			if 'int' in A_type:
+				a_data = np.random.randint(low=np.iinfo(A_type).min, high=np.iinfo(A_type).max, 
+											size=A_shape, dtype=A_type)
+			elif 'float' in A_type:
+				a_data = np.random.uniform(size=A_shape).astype(A_type)
+			else:
+				raise ValueError('A_type not impelemented')
+
+			if 'int' in W_type:
+				w_data = np.random.randint(low=np.iinfo(W_type).min, high=np.iinfo(W_type).max, 
+										size=W_shape, dtype=W_type)
+			elif 'float' in W_type:
+				w_data = np.random.uniform(size=W_shape).astype(W_type)
+			else:
+				raise ValueError('W_type not impelemented')
+
+			func = relay.Function([A, W], B)
+			params = {"W": w_data}
+			mod = tvm.IRModule.from_expr(func)
+
+			#generate output
+			local_target = 'llvm --system-lib'
+			ctx = tvm.context(local_target, 0)
+			with relay.build_config(opt_level=3):
+				test_graph, test_lib, test_params = relay.build(mod,
+																target=local_target,
+																params=params)
+			m = tvm.contrib.graph_runtime.create(test_graph, test_lib, ctx)
+			m.set_input('A', a_data)
+			m.set_input(**test_params)
+			m.run()
+			predictions = m.get_output(0).asnumpy()
+			b_np = predictions
+			
 		else:
-			raise RuntimeError("Task is not implemented")
+			raise RuntimeError(f'Task is not implemented: {task.name}')
 
 		with autotvm.apply_history_best(schedule_log):
 			with relay.build_config(opt_level=3):
-				graph, lib, params = relay.build_module.build(
+				graph, lib, out_params = relay.build_module.build(
 					mod, target=target, params=params)
 
 		
-		return graph, lib, params, a_data, b_np
+		return graph, lib, out_params, a_data, b_np
 
 	# build graph, lib, params
 	def build(self):
@@ -208,18 +312,15 @@ class AzureSphere():
 		self.lib.save(os.path.join(build_dir, 'conv2d_model.o'))
 		with open(os.path.join(build_dir, 'conv2d_graph.json'), 'w') as f_graph_json:
 			f_graph_json.write(self.graph)
-
-		# print(type(self.graph))
 		with open(os.path.join(build_dir, 'conv2d_graph.bin'), 'wb') as f_graph:
 			f_graph.write(bytes(self.graph, 'utf-8'))
-
 
 		with open(os.path.join(build_dir, 'conv2d_params.bin'), 'wb') as f_params:
 			f_params.write(relay.save_param_dict(self.params))
 		with open(os.path.join(build_dir, 'conv2d_data.bin'), "wb") as fp:
-			fp.write(self.dataIn.astype(np.float32).tobytes())
+			fp.write(self.dataIn.astype(self.dataIn.dtype).tobytes())
 		with open(os.path.join(build_dir, 'conv2d_output.bin'), "wb") as fp:
-			fp.write(self.dataOut.astype(np.float32).tobytes())
+			fp.write(self.dataOut.astype(self.dataOut.dtype).tobytes())
 
 		##generate ID
 		# id = np.array(self.key + ID_OFF).astype(np.uint16)
@@ -244,8 +345,10 @@ class AzureSphere():
 
 		make_file = os.path.join(config_path, "Makefile")
 		manifest_file = os.path.join(config_path, "app_manifest.json")
+		launch_file = os.path.join(config_path, "launch.vs.json")
 		shutil.copyfile(make_file, os.path.join(self.exportPath, "Makefile"))
 		shutil.copyfile(manifest_file, os.path.join(self.exportPath, "app_manifest.json"))
+		shutil.copyfile(launch_file, os.path.join(self.exportPath, "launch.vs.json"))
 
 		#TODO: make previous setup compatible to this
 		# src files

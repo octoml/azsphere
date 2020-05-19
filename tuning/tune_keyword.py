@@ -81,20 +81,17 @@ def task_to_schedule(task,
     return schedules
 
 def generate_schedules(model=None, layer=0, schedule_path=None):
-    from model.arm_keyword import get_module
+    from model.keyword_spotting import get_module
     
     global TASK_IND
     
-    target = tvm.target.create('llvm --system-lib')
-    # target = tvm.target.create('llvm -device=arm_cpu --system-lib')
-    # target = tvm.target.create('llvm -device=arm_cpu -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
-    print(f'TARGET: {target}')
+    print(f'TARGET: {TARGET}')
 
     build_dir = 'build'
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
 
-    if model == 'arm_keyword':
+    if model == 'keyword_spotting':
         shape_dict = {'Mfcc': (1, 49, 10)}
         mod = get_module('model/keyword_model/keyword_module.pickle')
 
@@ -104,7 +101,7 @@ def generate_schedules(model=None, layer=0, schedule_path=None):
         # import pdb; pdb.set_trace()
         
         with tvm.target.build_config(opt_level=3, disable_vectorize=True):
-            tasks = autotvm.task.extract_from_program(mod=mod['main'], params={}, target=target)
+            tasks = autotvm.task.extract_from_program(mod=mod['main'], params={}, target=TARGET)
         print(f'extracted {len(tasks)} tasks: {tasks}')
     else:
         raise RuntimeError("model not specified")
@@ -135,7 +132,7 @@ def generate_schedules(model=None, layer=0, schedule_path=None):
         if not os.path.exists(os.path.join(schedule_path, task_dir)):
             os.makedirs(os.path.join(schedule_path, task_dir))
 
-        log_file = "task_" + str(ii) + ".txt"
+        log_file = os.path.join(schedule_path, f'task_{str(ii)}.txt')
         schedules = task_to_schedule(task=task, log_file=log_file, **tuning_option)
         # print(schedules)
 
@@ -241,7 +238,9 @@ def run(opts, task_path):
                 shell = True,
                 stdout = subprocess.PIPE,
                 stderr=subprocess.PIPE)
-        process.communicate()
+        out, err = process.communicate()
+        if err:
+            raise RuntimeError('programming failed!')
         
         ##move to current directory
         os.chdir(current_dir)
@@ -257,10 +256,8 @@ def run(opts, task_path):
     return 0
 
 def create_best_log(opts, build_path=None, logfile=None):
-    # best_index = [60, 21, 104, 137, 12]   #best time for cifar
-    # best_index = [0, 0, 0, 0]   #best footprint for cifar keras full model
-    # best_index = [0, 0, 0, 4]   #best footprint for cifar relay
-    best_index = [0, 0, 0, 0]   #best footprint for cifar relay
+    # best_index = [0, 0, 0, 0]   #best footprint for keyword
+    best_index = [3, 107, 153, 1]   #best runtime for keyword
     tasks_dirs = [dI for dI in os.listdir(build_path) if os.path.isdir(os.path.join(build_path, dI))]
     tasks_dirs.sort()
     assert(len(best_index)== len(tasks_dirs))
@@ -302,7 +299,7 @@ if __name__ == '__main__':
     
     if opts.generate:
         TARGET = tvm.target.create('llvm --system-lib')
-        generate_schedules(model='arm_keyword', layer=0, schedule_path=build_dir)
+        generate_schedules(model='keyword_spotting', layer=0, schedule_path=build_dir)
 
     TARGET = tvm.target.create('llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib')
     if opts.build:
@@ -314,7 +311,7 @@ if __name__ == '__main__':
         run(opts=opts, task_path=os.path.join(build_dir, task))
 
     if opts.best:
-        create_best_log(opts=opts, build_path=build_dir, logfile='keyword_footprint_min.txt')
+        create_best_log(opts=opts, build_path=build_dir, logfile='keyword_runtime_min.txt')
     # if opts.build:
     #     if not opts.source:
     #         raise
