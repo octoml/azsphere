@@ -20,14 +20,14 @@
 
 // Convolution
 #define in_dim0   1
-#define in_dim1   8
-#define in_dim2   15
-#define in_dim3   15
+#define in_dim1   64
+#define in_dim2   25
+#define in_dim3   5
 
 #define out_dim0  1
-#define out_dim1  8
-#define out_dim2  15
-#define out_dim3  15
+#define out_dim1  64
+#define out_dim2  25
+#define out_dim3  5
 
 static ExitCode exitCode = ExitCode_Success;
 static char interface[] = "eth0";
@@ -41,7 +41,9 @@ static char param_file[] = "build/conv2d_params.bin";
 static char graph_file[] = "build/conv2d_graph.bin";
 
 int main(int argc, char **argv) {
+  #if AS_DEBUG
   Log_Debug("Starting TVM Conv2d Test...\n");
+  #endif
   
   struct timeval t0, t1, t2, t3, t4, t5;
   gettimeofday(&t0, 0);
@@ -87,15 +89,15 @@ int main(int argc, char **argv) {
   gettimeofday(&t1, 0);
 
   // Read data
-  float* input_storage;
-  Read_File_Float(data_file, &input_storage);
+  int8_t* input_storage;
+  Read_File_Int8(data_file, &input_storage);
 
   DLTensor input;
   input.data = input_storage;
   DLContext ctx = {kDLCPU, 0};
   input.ctx = ctx;
   input.ndim = 4;
-  DLDataType dtype = {kDLFloat, 32, 1};
+  DLDataType dtype = {kDLInt, 8, 1};
   input.dtype = dtype;
   int64_t shape [4] = {in_dim0, in_dim1, in_dim2, in_dim3};
   input.shape = shape;
@@ -112,13 +114,13 @@ int main(int argc, char **argv) {
   free(input_storage);
   free(graph_data);
 
-  float* output_storage = malloc(out_dim0 * out_dim1 * out_dim2 * out_dim3 * sizeof(float));
+  int32_t* output_storage = malloc(out_dim0 * out_dim1 * out_dim2 * out_dim3 * sizeof(int32_t));
   DLTensor output;
   output.data = output_storage;
   DLContext out_ctx = {kDLCPU, 0};
   output.ctx = out_ctx;
   output.ndim = 4;
-  DLDataType out_dtype = {kDLFloat, 32, 1};
+  DLDataType out_dtype = {kDLInt, 32, 1};
   output.dtype = out_dtype;
   int64_t out_shape [4] = {out_dim0, out_dim1, out_dim2, out_dim3};
   output.shape = out_shape;
@@ -132,8 +134,8 @@ int main(int argc, char **argv) {
   gettimeofday(&t5, 0);
 
 // Read expected output
-  float* exp_out;
-  Read_File_Float(output_file, &exp_out);
+  int32_t* exp_out;
+  Read_File_Int32(output_file, &exp_out);
 
   bool result = true;
   int output_size = out_dim0 * out_dim1 * out_dim2 * out_dim3;

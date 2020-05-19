@@ -38,9 +38,9 @@
 #include "utils.h"
 
 #define A_dim1      1
-#define A_dim2      288
+#define A_dim2      64
 #define out_dim1    1
-#define out_dim2    10
+#define out_dim2    12
 
 static ExitCode exitCode = ExitCode_Success;
 static char interface[] = "eth0";
