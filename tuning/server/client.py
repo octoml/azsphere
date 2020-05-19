@@ -1,6 +1,7 @@
 import socket
 import sys
 
+REC_BUFF_SIZE = 2000
 # Create a TCP/IP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -11,9 +12,9 @@ server_address = ('192.168.0.10', 11000)
 sock.connect(server_address)
 
 # sock.sendall(b"Hello")
+sock.sendall(b'ready')
 while(True):
-	sock.sendall(b'Hello')
-	data = repr(sock.recv(1024))
+	data = repr(sock.recv(REC_BUFF_SIZE))
 	
 	if len(data) > 0:
 		print(data)

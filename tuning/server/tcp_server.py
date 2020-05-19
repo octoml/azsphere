@@ -9,6 +9,7 @@ import argparse
 IP = '192.168.0.10'
 PORT = 11000
 sock = None
+REC_BUFF_SIZE = 2000
 
 class NetworkState(Enum):
 	WAITING = 1
@@ -38,6 +39,11 @@ def server_start(opts):
 	log_file = open(opts.log, "wb+", buffering=0)
 
 	numOfConnection = 1
+
+	if opts.demo:
+		data = prepare_input(opts.wav)
+		demo_data = data.astype(np.float32).tobytes()
+
 	while True:
 	    # Wait for a connection
 	    print('waiting for a connection')
@@ -49,14 +55,32 @@ def server_start(opts):
 	        print("Connection: " + str(numOfConnection))
 	        numOfConnection += 1
 	        # Receive the data in small chunks and retransmit it
-	        while True:
-	            data = connection.recv(100)
-	            print("data: " + str(data))
-	            if data:
-	            	log_file.write(data)
-	            else:
-	                print('no more data from ', client_address)
-	                break
+
+	        if opts.demo:
+	        	while True:
+	        		data = connection.recv(REC_BUFF_SIZE)
+	        		print("data: " + str(data))
+	        		if data:
+	        			if 'ready' in str(data):
+	        				connection.send(demo_data)
+	        		else:
+	        			print('no more data from ', client_address)
+	        			break
+
+	        	# print('Enter the command')
+	        	# command = input()
+	        	# if command == 'send':
+	        	# 	connection.send(str.encode("Hello"))
+	        	# 	print('message sent!')
+	        else:
+	        	while True:
+	        		data = connection.recv(REC_BUFF_SIZE)
+	        		print("data: " + str(data))
+	        		if data:
+	        			log_file.write(data)
+	        		else:
+	        			print('no more data from ', client_address)
+	        			break
 
 	    finally:
 	        # Clean up the connection
@@ -65,6 +89,12 @@ def server_start(opts):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--log', default='')
+	parser.add_argument('--demo', action='store_true')
+	parser.add_argument('--wav', default='')
 	opts = parser.parse_args()
 
+	if opts.demo:
+		from model.keyword_spotting import prepare_input
+		import numpy as np
+	
 	server_start(opts)
