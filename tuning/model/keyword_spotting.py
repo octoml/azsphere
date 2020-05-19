@@ -1,5 +1,5 @@
 #####
-## This model is from: https://github.com/ARM-software/ML-KWS-for-MCU 
+#This model is from: https://github.com/ARM-software/ML-KWS-for-MCU 
 #####
 import argparse
 import tvm
@@ -23,21 +23,30 @@ from tensorflow.python.framework import tensor_util
 # Tensorflow utility functions
 import tvm.relay.testing.tf as tf_testing
 import pickle
+import sys
+
+
+if 'ARM_KWS_PATH' not in os.environ:
+    raise RuntimeError('must have ARM_KWS_PATH in environment')
+ARM_KWS_PATH = os.environ['ARM_KWS_PATH']
+sys.path.insert(0, ARM_KWS_PATH)
 
 # from model.downcast import downcast_int8
+
 
 DEBUG_LOG = False
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 OPTS = None
+# Base location for model related files.
+repo_base = 'https://github.com/ARM-software/ML-KWS-for-MCU/raw/master/Pretrained_models'
+model_name = 'DS_CNN_S'
+model_file_name = f'{model_name}.pb'
+model_dir = os.path.join(repo_base, 'DS_CNN')
+model_url = os.path.join(model_dir, model_file_name)
+label_name = 'labels.txt'
+label_url = os.path.join(repo_base, label_name)
 
 def export_module(opts):
-    # Base location for model related files.
-    repo_base = 'https://github.com/mehrdadhe/ML-KWS-for-MCU/tree/master/Pretrained_models'
-    model_name = 'DS_CNN_S'
-    model_file_name = f'{model_name}.pb'
-    model_dir = os.path.join(repo_base, 'DS_CNN')
-    model_url = os.path.join(model_dir, model_file_name)
-
     # Target settings
     # Use these commented settings to build for cuda.
     layout = "NCHW"
@@ -48,7 +57,8 @@ def export_module(opts):
     ######################################################################
     # Download required files
     from tvm.contrib.download import download_testdata
-    model_path = os.path.join('/home/parallels/ML-KWS-for-MCU/Pretrained_models/DS_CNN', model_file_name)
+    model_path = download_testdata(model_url, model_file_name, module=['tf', 'keyword_spotting'])
+    label_path = download_testdata(label_url, label_name, module=['data'])
 
     ######################################################################
     # Import model
@@ -138,9 +148,13 @@ def export_module(opts):
 
     #quantization
     if opts.quantize:
+        if not opts.global_scale:
+            raise RuntimeError('Global Scale is not valid!')
+        global_scale = float(opts.global_scale)
         print('INFO: Quantizing...')
+        print(f'INFO: Global Scale: {global_scale}')
         with relay.quantize.qconfig(calibrate_mode='global_scale', 
-                                    global_scale=4.0, 
+                                    global_scale=global_scale,
                                     skip_conv_layers=[]):
             mod = relay.quantize.quantize(mod, params)
             # skip_conv_layers=[]
@@ -159,12 +173,13 @@ def export_module(opts):
             with open(os.path.join(build_dir, f'{model_name}_mod_cast.log'), 'w') as mod_log:
                 mod_log.write()
 
-    #save module
-    with open(f'{DIR_PATH}/keyword_model/keyword_module.pickle', 'wb') as h1:
-        pickle.dump(mod, h1, protocol=pickle.HIGHEST_PROTOCOL)
-    with open(f'{DIR_PATH}/keyword_model/keyword_module.txt', 'w') as f:
-        f.write(mod.astext())
-    print('INFO: module saved!')
+    if opts.quantize:
+        #save module
+        with open(f'{DIR_PATH}/keyword_model/module_gs_{global_scale}.pickle', 'wb') as h1:
+            pickle.dump(mod, h1, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(f'{DIR_PATH}/keyword_model/module_gs_{global_scale}.txt', 'w') as f:
+            f.write(mod.astext())
+        print('INFO: module saved!')
 
     return mod, params
 
@@ -179,10 +194,6 @@ def prepare_input(filename):
                             desired_channels=1,
                             desired_samples=16000,
                             name='decoded_sample_data')
-
-        # print(type(wav_decoder[0]))
-        # print(type(wav_decoder[1]))
-        # print(len(wav_decoder))
 
         spectrum = audio_ops.audio_spectrogram(input=wav_decoder[0],
                                             window_size=640,
@@ -203,25 +214,21 @@ def prepare_input(filename):
 
     return data
 
-
 def load_labels(filename):
-  """Read in labels, one label per line."""
-  return [line.rstrip() for line in tf.io.gfile.GFile(filename)]
+    label_path = download_testdata(label_url, label_name, module=['data'])
+    """Read in labels, one label per line."""
+    return [line.rstrip() for line in tf.io.gfile.GFile(label_path)]
 
-def build(opts, mod=None, params=None):
-    # target = opts.target
-    target = 'llvm --system-lib'
-    # target = 'llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib'
-    
+def build(opts, mod=None, params=None, target=None):
+    if not target:
+        raise RuntimeError('target is not valid!')
+
     build_dir = opts.out_dir
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
 
     #build relay
     if opts.quantize:
-        with open(f'{DIR_PATH}/keyword_model/keyword_module.pickle', 'rb') as handle:
-            mod = pickle.load(handle)
-
         with relay.build_config(opt_level=3):
             graph, lib, out_params = relay.build(mod,
                                             target=target)
@@ -257,7 +264,7 @@ def build(opts, mod=None, params=None):
 
 def test_sample(target, filepath):
     input_data = prepare_input(filepath)
-    lib, graph, out_params = build(OPTS, mod=None, params=None)
+    lib, graph, out_params = build(OPTS, mod=None, params=None, target='llvm --system-lib')
     ctx = tvm.context(target, 0)
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
     m.set_input('Mfcc', input_data)
@@ -279,8 +286,12 @@ def wav_file_info(filepath):
     fs, data = wavfile.read(filepath)
     print(fs)
     
-def test_accuracy(target):
-    lib, graph, out_params = build(OPTS, mod=None, params=None)
+def test_accuracy(opts, target):
+    with open(opts.module, 'rb') as handle:
+        mod = pickle.load(handle)
+    
+    lib, graph, out_params = build(opts, mod=mod, 
+                                   params=None, target=target)
     ctx = tvm.context(target, 0)
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
 
@@ -292,7 +303,6 @@ def test_accuracy(target):
     corrects = 0
     count = 0
     for test, label in zip(test_data, test_label):
-        print(count)
         count += 1
         # import pdb; pdb.set_trace()
         input_data = test.reshape((1, 49, 10))
@@ -307,7 +317,7 @@ def test_accuracy(target):
             corrects += 1
 
     acc = corrects/(num_of_samples * 1.0)
-    print(acc)
+    print(f'Accuracy for {num_of_samples} samples: {acc}')
     return acc
 
 def get_module(filename):
@@ -361,12 +371,14 @@ def get_dataset(num_of_samples):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--out-dir', default='build')
-    parser.add_argument('-q', '--quantize', action='store_true')
     parser.add_argument('--export', action='store_true')
+    parser.add_argument('-q', '--quantize', action='store_true')
+    parser.add_argument('--global-scale', default=None)
     parser.add_argument('-c', '--cast', action='store_true')
     parser.add_argument('-b', '--build', action='store_true')
     parser.add_argument('-t', '--target', default='llvm --system-lib')
     parser.add_argument('--test', action='store_true')
+    parser.add_argument('--module', default=None)
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--wav', default='')
 
@@ -377,10 +389,12 @@ if __name__ == '__main__':
         mod, params = export_module(OPTS)
         
     if OPTS.build:
-        build(OPTS)
+        with open(OPTS.module, 'rb') as handle:
+            mod = pickle.load(handle)
+        build(OPTS, mod=mod, target='llvm --system-lib')
 
     if OPTS.test:
-        test_accuracy(target='llvm --system-lib')
+        test_accuracy(OPTS, target='llvm --system-lib')
     
     if OPTS.wav:
         test_sample(target='llvm --system-lib', filepath=OPTS.wav)
