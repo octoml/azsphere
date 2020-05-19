@@ -118,7 +118,8 @@ $(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
 # build model
 $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin $(build_dir)/keyword_data.bin $(build_dir)/keyword_output.bin: build_model.py
 	python3 $< -o $(build_dir) --keyword --tuned
-	--footprint
+	# --tuned
+	# --footprint
 
 $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_params.bin $(build_dir)/cifar_data.bin $(build_dir)/cifar_output.bin $(build_dir)/id.bin: build_model.py
 	python3 $< -o $(build_dir) --cifar
