@@ -237,7 +237,7 @@ def build_keyword_model(opts):
     with open('build/graph.log', 'w') as f:
         f.write(str(graph))
 
-    input_data = prepare_input()
+    input_data = prepare_input('tuning/model/keyword_model/silence.wav')
     ctx = tvm.context(local_target, 0)
     m = tvm.contrib.graph_runtime.create(graph_test, lib_test, ctx)
     m.set_input('Mfcc', input_data)
