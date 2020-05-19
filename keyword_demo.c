@@ -132,29 +132,49 @@ int main(int argc, char **argv) {
   //TVM
   char* params_data;
   uint64_t params_size = Read_File_Char(param_file, &params_data);
+  fprintf(stdout, "param read\n");
+
   char* graph_data;
   Read_File_Char(graph_file, &graph_data);
+
+  fprintf(stdout, "graph read\n");
+
   gettimeofday(&t0, 0);
   auto *handle = tvm_runtime_create(graph_data, params_data, params_size);
   gettimeofday(&t1, 0);
   free(graph_data);
   free(params_data);
 
+  fprintf(stdout, "handle created\n");
+
+
   int input_size = in_dim0 * in_dim1 * in_dim2 * sizeof(float);
   char * buffer = (char *)malloc(input_size);
   float* input_storage;
   int valread;
+  uint16_t recInd;
+  size_t readBlock = 1;
 
   while(1) {
     LED_Set(20);
     memset(buffer, 0, input_size);
     len = message(id, Message_READY, msg);
     send(socket , msg , (size_t)len, 0);
-    valread = read(socket, &buffer[0], (size_t)input_size);
+
+    recInd = 0;
+    valread = 0;
+    while((valread >= 0) && (recInd < input_size)) {
+      valread = read(socket, &buffer[recInd], readBlock);
+      if (valread >= 0) {
+        recInd = recInd + valread;
+      }
+    }
+
+    // valread = read(socket, &buffer[0], (size_t)input_size);
     
-    if (valread < input_size) {
+    if (valread < 0) {
       // #if AS_DEBUG
-      fprintf(stdout, "input read: %d\n", valread);
+      fprintf(stdout, "Error: reading input data!\n");
       // #endif
     }
     else {
@@ -204,6 +224,7 @@ int main(int argc, char **argv) {
       }
       fprintf(stdout, "label: %s, runtime: %3.2f\n", labels[max_index], duration);
       LED_Set(max_index);
+      nanosleep(&sleepTime, NULL);
     }
   }
 
