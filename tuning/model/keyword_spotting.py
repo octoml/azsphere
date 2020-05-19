@@ -168,7 +168,7 @@ def export_module(opts):
 
     return mod, params
 
-def prepare_input():
+def prepare_input(filename):
     from tensorflow.contrib.framework.python.ops import audio_ops
     from tensorflow.python.ops import io_ops
 
@@ -198,7 +198,7 @@ def prepare_input():
                                name='Mfcc')
 
         data = sess.run(final,
-        feed_dict={wav_filename_placeholder: f'{DIR_PATH}/keyword_model/silence.wav'})
+        feed_dict={wav_filename_placeholder: filename})
         print(f'Data shape: {data.shape}')
 
     return data
@@ -217,10 +217,6 @@ def build(opts, mod=None, params=None):
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
 
-    ##prepare input data and run config
-    input_data = prepare_input()
-    ctx = tvm.context(target, 0)
-
     #build relay
     if opts.quantize:
         with open(f'{DIR_PATH}/keyword_model/keyword_module.pickle', 'rb') as handle:
@@ -235,27 +231,55 @@ def build(opts, mod=None, params=None):
                                             target=target,
                                             params=params)
 
+    ##prepare input data and run config
+    # input_data = prepare_input(f'{DIR_PATH}/keyword_model/silence.wav')
+    # ctx = tvm.context(target, 0)
+
+    # m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
+    # m.set_input('Mfcc', input_data)
+    # m.set_input(**out_params)
+    # m.run()
+    # predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
+
+    # print(predictions)
+    # predictions = predictions[0]
+    # labels = load_labels(f'{DIR_PATH}/keyword_model/labels.txt')
+    # print(labels)
+
+    # num_top_predictions = 12
+    # top_k = predictions.argsort()[-num_top_predictions:][::-1]
+    # for node_id in top_k:
+    #   human_string = labels[node_id]
+    #   score = predictions[node_id]
+    #   print('%s (score = %.5f)' % (human_string, score))
+
+    return lib, graph, out_params
+
+def test_sample(target, filepath):
+    input_data = prepare_input(filepath)
+    lib, graph, out_params = build(OPTS, mod=None, params=None)
+    ctx = tvm.context(target, 0)
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
     m.set_input('Mfcc', input_data)
     m.set_input(**out_params)
     m.run()
     predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
-
-    print(predictions)
     predictions = predictions[0]
+
     labels = load_labels(f'{DIR_PATH}/keyword_model/labels.txt')
-    print(labels)
 
     num_top_predictions = 12
     top_k = predictions.argsort()[-num_top_predictions:][::-1]
-    for node_id in top_k:
-      human_string = labels[node_id]
-      score = predictions[node_id]
-      print('%s (score = %.5f)' % (human_string, score))
+    human_string = labels[top_k[0]]
+    score = predictions[top_k[0]]
+    print(f'prediction: {human_string}, score: {score}')
 
-    return lib, graph, out_params
-
-def test(target):
+def wav_file_info(filepath):
+    from scipy.io import wavfile
+    fs, data = wavfile.read(filepath)
+    print(fs)
+    
+def test_accuracy(target):
     lib, graph, out_params = build(OPTS, mod=None, params=None)
     ctx = tvm.context(target, 0)
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
@@ -344,6 +368,8 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--target', default='llvm --system-lib')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--wav', default='')
+
     OPTS = parser.parse_args()
     DEBUG_LOG = OPTS.debug
 
@@ -354,4 +380,8 @@ if __name__ == '__main__':
         build(OPTS)
 
     if OPTS.test:
-        test(target='llvm --system-lib')
+        test_accuracy(target='llvm --system-lib')
+    
+    if OPTS.wav:
+        test_sample(target='llvm --system-lib', filepath=OPTS.wav)
+        # wav_file_info(OPTS.wav)
