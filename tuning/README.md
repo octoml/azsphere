@@ -1,4 +1,4 @@
-# Keyword Spotting Model
+## Keyword Spotting Model
 ### Before running the model
 
 - Download [ARM repository] (https://github.com/ARM-software/ML-KWS-for-MCU) in home directory
