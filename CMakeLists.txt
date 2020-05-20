@@ -10,8 +10,8 @@ OPTION(CONV2D "Is this conv2d?" OFF)
 OPTION(CONV2D_NET "Is this conv2d network?" OFF)
 OPTION(DEMO "Is this demo?" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
-OPTION(KEYWORD "Is this keyword model?" OFF)
-OPTION(KEYWORD_DEMO "Is this keyword demo?" ON)
+OPTION(KEYWORD "Is this keyword model?" ON)
+OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
 
 
 # object files including the model
@@ -45,7 +45,7 @@ elseif(KEYWORD_DEMO)
   SET(OBJS build/keyword_model.o)
 else()
   message("INFO: CIFAR TASK0!")
-  SET(CFILES cifar_task3.c bundle_static.c)
+  SET(CFILES cifar_task2.c bundle_static.c)
   SET(OBJS build/conv2d_model.o)
 endif()
 
