@@ -14,7 +14,7 @@
 #include <hw/sample_hardware.h>
 #include <tvm/runtime/c_runtime_api.h>
 
-#include "config.c"
+// #include "config.c"
 #include "bundle.h"
 #include "network.h"
 #include "utils.h"
