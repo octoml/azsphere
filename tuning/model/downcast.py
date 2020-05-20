@@ -20,7 +20,7 @@ def downcast_int8(module):
     """
     # get_valid_counts and non_max_suppression does not support fp16 so we create a filter list for them
     # filter_list = ['nn.conv2d', 'nn.batch_norm', 'nn.dense']
-    filter_list = []
+    filter_list = ['nn.batch_norm']
     class DowncastMutator(ExprMutator):
         """Downcast to int8 mutator"""
         def visit_call(self, call):
@@ -40,6 +40,12 @@ def downcast_int8(module):
                     tuple_types = call.checked_type.fields
                     for cur_type in tuple_types:
                         type_list.append(cur_type.dtype)
+                if call.op.name == 'nn.batch_norm':
+                    # import pdb; pdb.set_trace()
+                    tuple_types = call.checked_type.fields
+                    for cur_type in tuple_types:
+                        type_list.append(cur_type.dtype)
+
             args = [self.visit(arg) for arg in call.args]
             new_args = list()
             arg_idx = 0
@@ -48,9 +54,13 @@ def downcast_int8(module):
                     new_args.append(cast(arg, dtype=dtype))
                 else:
                     if call.op.name in filter_list:
-                        if isinstance(arg, TupleGetItem) and type_list[arg_idx] == 'float32':
+                        # import pdb; pdb.set_trace()
+                        # if isinstance(arg, TupleGetItem) and type_list[arg_idx] == 'float32':
+                        #     new_args.append(arg)
+                        #     import pdb; pdb.set_trace()
+                        if type_list[arg_idx] == 'float32':
                             new_args.append(arg)
-                            import pdb; pdb.set_trace()
+                            # import pdb; pdb.set_trace()
                         else:
                             new_args.append(cast(arg, dtype=dtype))
                     else:
@@ -59,6 +69,8 @@ def downcast_int8(module):
 
             if call.op.name in filter_list and call.op.name != 'nn.batch_norm':
                 return cast(Call(new_fn, new_args, call.attrs), dtype='int8')
+            # if call.op.name in filter_list and call.op.name == 'nn.batch_norm':
+            #     return cast(Call(new_fn, new_args, call.attrs), dtype='float32')
 
             return Call(new_fn, new_args, call.attrs)
 
