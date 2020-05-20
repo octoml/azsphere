@@ -1,3 +1,4 @@
+#pragma once
 #include "Hardware/mt3620_rdb/inc/hw/sample_hardware.h"
 
 #define AS_DEBUG                1

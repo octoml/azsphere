@@ -4,7 +4,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
 PROJECT(octoml_AS C)
 azsphere_configure_tools(TOOLS_REVISION "20.04")
-azsphere_configure_api(TARGET_API_SET "4")
+azsphere_configure_api(TARGET_API_SET "5")
 
 
 # Set for unit test or demo
@@ -65,6 +65,8 @@ TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
 # Project Headers
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ./include)
 
+azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "Hardware/mt3620_rdb" TARGET_DEFINITION "my_hardware.json")
+
 # Add MakeImage post-build command
 # Note: No space between multiple file names
 if(TEST)
@@ -78,10 +80,14 @@ elseif(DEMO)
 elseif(CIFAR)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/cifar_data.bin;build/cifar_output.bin;build/cifar_params.bin;build/cifar_graph.bin;build/id.bin")
 elseif(KEYWORD OR KEYWORD_DEMO)
-  SET(ADDITIONAL_APPROOT_INCLUDES "build/keyword_data.bin;build/keyword_output.bin;build/keyword_params.bin;build/keyword_graph.bin;build/id.bin")
+  azsphere_target_add_image_package(
+    ${PROJECT_NAME}
+    RESOURCE_FILES
+        "build/keyword_data.bin"
+        "build/keyword_output.bin"
+        "build/keyword_params.bin"
+        "build/keyword_graph.bin"
+        "build/id.bin")
 else()
   SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin;build/conv2d_params.bin;build/conv2d_graph.bin;build/id.bin")
 endif()
-
-azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "Hardware/mt3620_rdb" TARGET_DEFINITION "my_hardware.json")
-azsphere_target_add_image_package(${PROJECT_NAME})
