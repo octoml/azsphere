@@ -195,7 +195,7 @@ def build_keyword_model(opts):
     model_input_name = 'Mfcc'
     shape_dict = {model_input_name: (1, 49, 10)}
 
-    mod = get_module('tuning/model/keyword_model/module_gs_4.0.pickle')
+    mod = get_module('tuning/model/keyword_model/module_gs_4.0_conv_notquantized.pickle')
     print(mod)
     
     print("Compile...")
