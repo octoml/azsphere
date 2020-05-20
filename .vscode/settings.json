@@ -6,7 +6,7 @@
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "${command:azuresphere.AzureSphereSdkDir}/CMakeFiles/AzureSphereToolchain.cmake",
         "AZURE_SPHERE_TARGET_HARDWARE_DEFINITION_DIRECTORY": "${workspaceRoot}/Hardware/mt3620_rdb",
-        "AZURE_SPHERE_TARGET_HARDWARE_DEFINITION": "sample_hardware.json",
+        "AZURE_SPHERE_TARGET_HARDWARE_DEFINITION": "my_hardware.json",
         "AZURE_SPHERE_TARGET_API_SET": "4"
     },
     "cmake.configureOnOpen": true,

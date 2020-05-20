@@ -1,6 +1,3 @@
-	# -DAZURE_SPHERE_TARGET_HARDWARE_DEFINITION_DIRECTORY="./Hardware/mt3620_rdb" \
-	-DAZURE_SPHERE_TARGET_HARDWARE_DEFINITION="sample_hardware.json" \
-
 CMAKE_FLAGS = -G "Ninja" \
 	-DCMAKE_TOOLCHAIN_FILE="/opt/azurespheresdk/CMakeFiles/AzureSphereToolchain.cmake" \
 	-DAZURE_SPHERE_TARGET_API_SET="4" \
@@ -14,7 +11,7 @@ CMAKE_FLAGS = -G "Ninja" \
 build_dir := build
 
 copy_dir := schedule_0000
-task_dir := task_0003
+task_dir := task_0002
 
 copy:
 	@mkdir -p ${build_dir}
@@ -45,6 +42,9 @@ restart:
 
 enable_development:
 	azsphere device enable-development
+
+list:
+	azsphere device img list-installed
 
 install_ethernet:
 	azsphere image-package pack-board-config --preset lan-enc28j60-isu0-int5 --output enc28j60-isu0-int5.imagepackage
@@ -117,7 +117,7 @@ $(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
 
 # build model
 $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin $(build_dir)/keyword_data.bin $(build_dir)/keyword_output.bin: build_model.py
-	python3 $< -o $(build_dir) --keyword --tuned
+	python3 $< -o $(build_dir) --keyword --footprint
 	# --tuned
 	# --footprint
 

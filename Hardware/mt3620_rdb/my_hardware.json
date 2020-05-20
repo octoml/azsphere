@@ -23,7 +23,7 @@
         {"Name": "SAMPLE_BUTTON_2", "Type": "Gpio", "Mapping": "MT3620_RDB_BUTTON_B", "Comment": "MT3620 RDB: Button B"},
         {"Name": "SAMPLE_POTENTIOMETER_ADC_CONTROLLER", "Type": "Adc", "Mapping": "MT3620_RDB_ADC_CONTROLLER0", "Comment": "MT3620 RDB: ADC Potentiometer controller"},
         {"Name": "SAMPLE_POTENTIOMETER_ADC_CHANNEL", "Type": "int", "Mapping": "MT3620_ADC_CHANNEL0", "Comment": "MT3620 RDB: Connect external potentiometer to ADC controller 0, channel 0 using header 2, pin 11. In the app manifest, it is only necessary to request the capability for the ADC Group Controller, SAMPLE_POTENTIOMETER_ADC_CONTROLLER."},
-        
+                
         {"Name": "LED1r", "Type": "Gpio", "Mapping": "MT3620_RDB_LED1_RED", "Comment": "MT3620 RDB: LED 1"},
         {"Name": "LED1g", "Type": "Gpio", "Mapping": "MT3620_RDB_LED1_GREEN", "Comment": "MT3620 RDB: LED 1"},
         {"Name": "LED1b", "Type": "Gpio", "Mapping": "MT3620_RDB_LED1_BLUE", "Comment": "MT3620 RDB: LED 1"},
