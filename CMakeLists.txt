@@ -1,8 +1,11 @@
 #  Copyright (c) Microsoft Corporation. All rights reserved.
 #  Licensed under the MIT License.
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
 PROJECT(octoml_AS C)
+azsphere_configure_tools(TOOLS_REVISION "20.04")
+azsphere_configure_api(TARGET_API_SET "4")
+
 
 # Set for unit test or demo
 OPTION(TEST "Is this test?" OFF)
@@ -79,4 +82,6 @@ elseif(KEYWORD OR KEYWORD_DEMO)
 else()
   SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin;build/conv2d_params.bin;build/conv2d_graph.bin;build/id.bin")
 endif()
-INCLUDE("${AZURE_SPHERE_MAKE_IMAGE_FILE}")
+
+azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "Hardware/mt3620_rdb" TARGET_DEFINITION "my_hardware.json")
+azsphere_target_add_image_package(${PROJECT_NAME})
