@@ -1,9 +1,7 @@
 CMAKE_FLAGS = -G "Ninja" \
 	-DCMAKE_TOOLCHAIN_FILE="/opt/azurespheresdk/CMakeFiles/AzureSphereToolchain.cmake" \
 	-DAZURE_SPHERE_TARGET_API_SET="5" \
-	--no-warn-unused-cli \
 	-DCMAKE_BUILD_TYPE="Debug" \
-	-DCMAKE_MAKE_PROGRAM="ninja" \
 	../
 
 build_dir := build
