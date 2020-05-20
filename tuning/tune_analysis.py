@@ -12,6 +12,7 @@ CI = 3
 C_OUT = 3
 H_OUT = 20
 W_OUT = 20
+#TODO: This is correct only for Conv2D
 TOTAL_OPS = (CI * H_OUT * W_OUT * KERNEL * KERNEL * C_OUT) * 2
 
 def npi_to_json(logFile):
@@ -154,10 +155,12 @@ def plot_time(azure, npi):
 				time_azure.append(t0)
 				time_npi.append(t1)
 	else:
-		for item in azure:
+		for ii, item in enumerate(azure):
 			if item['result']:
 				t0 = item['time']
 				time_azure.append(t0)
+			else:
+				print(f'schedule number: {ii}')
 	# azure_norm = [float(i)/max(time_azure) for i in time_azure]
 	# npi_norm = [float(i)/max(time_npi) for i in time_npi]
 	azure_final = time_azure
@@ -287,7 +290,7 @@ if __name__ == '__main__':
 							   runtime_path='/home/parallels/azure-sphere/tuning/server/keyword')
 		for ii in range(len(items)):
 			task = items[ii]
-			print(task)
+			# print(task)
 			# print("\n")
 			sch_min = min(task)
 			sch_min_ind = task.index(sch_min)

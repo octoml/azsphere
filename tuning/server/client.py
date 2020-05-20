@@ -1,5 +1,6 @@
 import socket
 import sys
+from time import sleep
 
 REC_BUFF_SIZE = 2000
 # Create a TCP/IP socket
@@ -19,3 +20,7 @@ while(True):
 	if len(data) > 0:
 		print(data)
 		break
+	# sleep(10)
+	# sock.sendall(b'ready')
+	# sleep(10)
+	# sock.sendall(b'ready')
