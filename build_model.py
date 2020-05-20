@@ -192,11 +192,10 @@ def build_cifar(opts, model_name):
 def build_keyword_model(opts):
     from tuning.model.keyword_spotting import get_module, prepare_input
 
-
     model_input_name = 'Mfcc'
     shape_dict = {model_input_name: (1, 49, 10)}
 
-    mod = get_module('tuning/model/keyword_model/keyword_module.pickle')
+    mod = get_module('tuning/model/keyword_model/module_gs_4.0.pickle')
     print(mod)
     
     print("Compile...")
@@ -207,8 +206,9 @@ def build_keyword_model(opts):
                 graph, lib, out_params = relay.build_module.build(
                     mod, target=TARGET)
     elif opts.footprint:
-        print("INFO: Model tuning for footprint!")
-        with autotvm.apply_history_best(os.path.join('tuning', 'keyword_footprint_min.txt')):
+        history_file = 'keyword_footprint_min_1.txt'
+        print(f'INFO: Model tuning for footprint with file {history_file}!')
+        with autotvm.apply_history_best(os.path.join('tuning', history_file)):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
                     mod, target=TARGET)  

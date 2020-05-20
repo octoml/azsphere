@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 
   gettimeofday(&t0, 0);
 
-  int fd = GPIO_OpenAsOutput(SAMPLE_LED, GPIO_OutputMode_PushPull, GPIO_Value_High);
+  int fd = GPIO_OpenAsOutput(LED1[0], GPIO_OutputMode_PushPull, GPIO_Value_High);
   if (fd < 0) {
     #if AS_DEBUG
     Log_Debug(
@@ -118,7 +118,6 @@ int main(int argc, char **argv) {
   input.strides = NULL;
   input.byte_offset = 0;
   
-  // tvm_runtime_set_input(handle, "conv2d_1_input", &input);
   tvm_runtime_set_input(handle, "Mfcc", &input);
 
   duration = 0;
