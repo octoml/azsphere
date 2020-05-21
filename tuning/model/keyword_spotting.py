@@ -155,7 +155,7 @@ def export_module(opts):
         print(f'INFO: Global Scale: {global_scale}')
         with relay.quantize.qconfig(calibrate_mode='global_scale', 
                                     global_scale=global_scale,
-                                    skip_conv_layers=[]):
+                                    skip_conv_layers=[0]):
             mod = relay.quantize.quantize(mod, params)
             # skip_conv_layers=[]
 
@@ -214,7 +214,8 @@ def prepare_input(filename):
 
     return data
 
-def load_labels(filename):
+def load_labels():
+    from tvm.contrib.download import download_testdata
     label_path = download_testdata(label_url, label_name, module=['data'])
     """Read in labels, one label per line."""
     return [line.rstrip() for line in tf.io.gfile.GFile(label_path)]
@@ -264,7 +265,13 @@ def build(opts, mod=None, params=None, target=None):
 
 def test_sample(target, filepath):
     input_data = prepare_input(filepath)
-    lib, graph, out_params = build(OPTS, mod=None, params=None, target='llvm --system-lib')
+    if OPTS.module:
+        with open(OPTS.module, 'rb') as handle:
+            module = pickle.load(handle)
+    else:
+        module = None
+
+    lib, graph, out_params = build(OPTS, mod=module, params=None, target='llvm --system-lib')
     ctx = tvm.context(target, 0)
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
     m.set_input('Mfcc', input_data)
@@ -273,13 +280,12 @@ def test_sample(target, filepath):
     predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
     predictions = predictions[0]
 
-    labels = load_labels(f'{DIR_PATH}/keyword_model/labels.txt')
+    labels = load_labels()
 
     num_top_predictions = 12
     top_k = predictions.argsort()[-num_top_predictions:][::-1]
-    human_string = labels[top_k[0]]
-    score = predictions[top_k[0]]
-    print(f'prediction: {human_string}, score: {score}')
+    for item in top_k:
+        print('{:>12}\t{:>15}'.format(labels[item], predictions[item]))
 
 def wav_file_info(filepath):
     from scipy.io import wavfile
