@@ -14,6 +14,7 @@
 #include <hw/sample_hardware.h>
 #include <tvm/runtime/c_runtime_api.h>
 #include <float.h>
+#include <signal.h>
 
 #include "config.c"
 #include "bundle.h"
@@ -32,8 +33,6 @@
 #define out_dim0    1
 #define out_dim1    12
 
-#define NUM_EXP     1
-
 static ExitCode exitCode = ExitCode_Success;
 #define interface     "eth0"
 #define serverPort    11000
@@ -41,8 +40,9 @@ static ExitCode exitCode = ExitCode_Success;
 #define id_file       "build/id.bin"
 #define param_file    "build/keyword_params.bin"
 #define graph_file    "build/keyword_graph.bin"
+static int server_socket;
 static uint16_t id = 0;
-static char * labels [12] = {"_silence_", "_unknown_", "yes", "no", "up", "down",
+static char * labels [12] = {"silence", "unknown", "yes", "no", "up", "down",
                           "left", "right", "on", "off", "stop", "go"};
 static int led1[3];
 static int led2[3];
@@ -74,6 +74,12 @@ static int LED_Set(int label) {
   uint8_t *leds;
   switch (label)
   {
+  case 0: //silence
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    break;
+  case 1: //unknown
+    leds = (uint8_t[12]){1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0};
+    break;
   case 2: //yes
     leds = (uint8_t[12]){0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0};
     break;
@@ -92,6 +98,18 @@ static int LED_Set(int label) {
   case 7: //right
     leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0};
     break;
+  case 8: //on
+    leds = (uint8_t[12]){1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    break;
+  case 9: //off
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    break;
+  case 10: //stop
+    leds = (uint8_t[12]){1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0};
+    break;
+  case 11: //go
+    leds = (uint8_t[12]){0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0};
+    break;
   default:
     leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     break;
@@ -104,17 +122,42 @@ static int LED_Set(int label) {
   }
 }
 
-int main(int argc, char **argv) {
-  #if AS_NETWORKING
-  exitCode = NetworkEnable(interface);
-  exitCode = ConfigureNetworkInterfaceWithStaticIp(interface,
-                                                 "192.168.0.20",
-                                                 "255.255.255.0",
-                                                 "192.168.0.1");
+static void TerminationHandler(int signalNumber)
+{
+  exitCode = ExitCode_TermHandler_SigTerm;
+}
 
-  int socket = OpenIpV4Socket(serverIP, serverPort, SOCK_STREAM, &exitCode);
+static ExitCode Initialize() {
+  ExitCode result = ExitCode_Success;
+  #if AS_NETWORKING
+  result = NetworkEnable(interface);
+  result = ConfigureNetworkInterfaceWithStaticIp(interface, "192.168.0.20",
+                                                 "255.255.255.0", "192.168.0.1");
+  server_socket = OpenIpV4Socket(serverIP, serverPort, SOCK_STREAM, &exitCode);
+  if (server_socket < 0) {
+    result = ExitCode_OpenIpV4_Socket;
+  }
+
   #endif
-  Debug_Init(socket);
+  #if AS_ETHERNET_DEBUG
+  Debug_Init(server_socket);
+  #endif
+
+  struct sigaction action;
+  memset(&action, 0, sizeof(struct sigaction));
+  action.sa_handler = TerminationHandler;
+  sigaction(SIGTERM, &action, NULL);
+
+  return result;
+}
+
+static void ShutDownAndCleanup(void)
+{
+    CloseFdAndPrintError(server_socket, "Socket");
+}
+
+int main(int argc, char **argv) {
+  Initialize();
   fprintf(stdout, "Keyword Demo starting...\n");
   GPIO_Init();
 
@@ -126,7 +169,7 @@ int main(int argc, char **argv) {
   char msg [20];
   int len;
   len = message(id, Message_START, msg);
-  send(socket , msg , (size_t)len, 0);
+  send(server_socket , msg , (size_t)len, 0);
   #endif
 
   //TVM
@@ -159,18 +202,18 @@ int main(int argc, char **argv) {
     LED_Set(20);
     memset(buffer, 0, input_size);
     len = message(id, Message_READY, msg);
-    send(socket , msg , (size_t)len, 0);
+    send(server_socket , msg , (size_t)len, 0);
 
     recInd = 0;
     valread = 0;
     while((valread >= 0) && (recInd < input_size)) {
-      valread = read(socket, &buffer[recInd], readBlock);
+      valread = read(server_socket, &buffer[recInd], readBlock);
       if (valread >= 0) {
         recInd = recInd + valread;
       }
     }
 
-    // valread = read(socket, &buffer[0], (size_t)input_size);
+    // valread = read(server_socket, &buffer[0], (size_t)input_size);
     
     if (valread < 0) {
       // #if AS_DEBUG
@@ -213,6 +256,7 @@ int main(int argc, char **argv) {
       tvm_runtime_get_output(handle, 0, &output);
       //TODO: add this to final close
       // tvm_runtime_destroy(handle);
+      // and clode the server_socket
 
       float max_iter = -FLT_MAX;
       int32_t max_index = -1;
@@ -224,10 +268,10 @@ int main(int argc, char **argv) {
       }
       fprintf(stdout, "label: %s, runtime: %3.2f\n", labels[max_index], duration);
       LED_Set(max_index);
-      nanosleep(&sleepTime, NULL);
+      // nanosleep(&sleepTime, NULL);
     }
   }
 
-endApp:
-  return 0;
+  ShutDownAndCleanup();
+  return exitCode;
 }
