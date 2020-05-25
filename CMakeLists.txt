@@ -2,10 +2,9 @@
 #  Licensed under the MIT License.
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
-PROJECT(octoml_AS C)
+PROJECT(octoml_AS C CXX)
 azsphere_configure_tools(TOOLS_REVISION "20.04")
 azsphere_configure_api(TARGET_API_SET "5")
-
 
 # Set for unit test or demo
 OPTION(TEST "Is this test?" OFF)
@@ -13,7 +12,7 @@ OPTION(CONV2D "Is this conv2d?" OFF)
 OPTION(CONV2D_NET "Is this conv2d network?" OFF)
 OPTION(DEMO "Is this demo?" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
-OPTION(KEYWORD "Is this keyword model?" ON)
+OPTION(KEYWORD "Is this keyword model?" OFF)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
 
 
@@ -44,18 +43,16 @@ elseif(KEYWORD)
   SET(OBJS build/keyword_model.o)
 elseif(KEYWORD_DEMO)
   message("INFO: Building KEYWORD demo!")
-  SET(CFILES keyword_demo.c bundle_static.c)
+  SET(CFILES keyword_demo_feature.c bundle_static.c)
   SET(OBJS build/keyword_model.o)
 else()
-  message("INFO: CIFAR TASK0!")
-  SET(CFILES cifar_task2.c bundle_static.c)
-  SET(OBJS build/conv2d_model.o)
+  message("INFO: Hello test!")
+  SET(CFILES mfcc_test.cpp src/example.cpp)
 endif()
 
 # Create executable
 ADD_EXECUTABLE(${PROJECT_NAME} ${CFILES} ${OBJS})
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} applibs pthread gcc_s c)
-
 
 # Add TVM headers
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/include)
@@ -64,6 +61,14 @@ TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dmlc-core/inclu
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
 # Project Headers
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ./include)
+# 3rdparty libraries
+SET(ML_KWS 3rdparty/ML_KWS/Deployment/Source)
+# TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/MFCC)
+# TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/NN)
+# TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/NN/DS_CNN)
+# TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/KWS)
+# TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/KWS/KWS_DS_CNN)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC 3rdparty/ML_KWS/Deployment/Examples/simple_test)
 
 azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "Hardware/mt3620_rdb" TARGET_DEFINITION "my_hardware.json")
 
@@ -89,5 +94,6 @@ elseif(KEYWORD OR KEYWORD_DEMO)
         "build/keyword_graph.bin"
         "build/id.bin")
 else()
-  SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin;build/conv2d_params.bin;build/conv2d_graph.bin;build/id.bin")
+  azsphere_target_add_image_package(
+    ${PROJECT_NAME})
 endif()
