@@ -37,6 +37,9 @@ static ExitCode exitCode = ExitCode_Success;
 #define interface     "eth0"
 #define serverPort    11000
 #define serverIP      "192.168.0.10"
+#define staticIP      "192.168.0.20"
+#define subnet        "255.255.255.0"
+#define gateway       "192.168.0.1"
 #define id_file       "build/id.bin"
 #define param_file    "build/keyword_params.bin"
 #define graph_file    "build/keyword_graph.bin"
@@ -78,7 +81,7 @@ static int LED_Set(int label) {
     leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     break;
   case 1: //unknown
-    leds = (uint8_t[12]){1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0};
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     break;
   case 2: //yes
     leds = (uint8_t[12]){0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0};
@@ -87,16 +90,16 @@ static int LED_Set(int label) {
     leds = (uint8_t[12]){1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0};
     break;
   case 4: //up
-    leds = (uint8_t[12]){0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1};
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0};
     break;
   case 5: //down
-    leds = (uint8_t[12]){1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    leds = (uint8_t[12]){0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0};
     break;
   case 6: //left
-    leds = (uint8_t[12]){1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+    leds = (uint8_t[12]){1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
     break;
   case 7: //right
-    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0};
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1};
     break;
   case 8: //on
     leds = (uint8_t[12]){1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
@@ -131,8 +134,8 @@ static ExitCode Initialize() {
   ExitCode result = ExitCode_Success;
   #if AS_NETWORKING
   result = NetworkEnable(interface);
-  result = ConfigureNetworkInterfaceWithStaticIp(interface, "192.168.0.20",
-                                                 "255.255.255.0", "192.168.0.1");
+  result = ConfigureNetworkInterfaceWithStaticIp(interface, staticIP,
+                                                 subnet, gateway);
   server_socket = OpenIpV4Socket(serverIP, serverPort, SOCK_STREAM, &exitCode);
   if (server_socket < 0) {
     result = ExitCode_OpenIpV4_Socket;
@@ -148,6 +151,8 @@ static ExitCode Initialize() {
   action.sa_handler = TerminationHandler;
   sigaction(SIGTERM, &action, NULL);
 
+  GPIO_Init();
+  LED_Set(20);
   return result;
 }
 
@@ -159,11 +164,11 @@ static void ShutDownAndCleanup(void)
 int main(int argc, char **argv) {
   Initialize();
   fprintf(stdout, "Keyword Demo starting...\n");
-  GPIO_Init();
-
+  
   struct timeval t0, t1;
   float duration;
   const struct timespec sleepTime = {.tv_sec = 1, .tv_nsec = 0};
+  int * tvm_handle;
 
   #if AS_NETWORKING
   char msg [20];
@@ -183,7 +188,7 @@ int main(int argc, char **argv) {
   fprintf(stdout, "graph read\n");
 
   gettimeofday(&t0, 0);
-  auto *handle = tvm_runtime_create(graph_data, params_data, params_size);
+  tvm_handle = tvm_runtime_create(graph_data, params_data, params_size);
   gettimeofday(&t1, 0);
   free(graph_data);
   free(params_data);
@@ -197,12 +202,12 @@ int main(int argc, char **argv) {
   int valread;
   uint16_t recInd;
   size_t readBlock = 1;
+  int status = -1;
 
   while(1) {
-    LED_Set(20);
     memset(buffer, 0, input_size);
     len = message(id, Message_READY, msg);
-    send(server_socket , msg , (size_t)len, 0);
+    status = send(server_socket , msg , (size_t)len, 0);
 
     recInd = 0;
     valread = 0;
@@ -234,9 +239,9 @@ int main(int argc, char **argv) {
       input.strides = NULL;
       input.byte_offset = 0;
 
-      tvm_runtime_set_input(handle, "Mfcc", &input);
+      tvm_runtime_set_input(tvm_handle, "Mfcc", &input);
       gettimeofday(&t0, 0);
-      tvm_runtime_run(handle);
+      tvm_runtime_run(tvm_handle);
       gettimeofday(&t1, 0);
       duration = (float)(t1.tv_sec-t0.tv_sec)*1000 + (float)(t1.tv_usec-t0.tv_usec)/1000.f;
 
@@ -253,10 +258,7 @@ int main(int argc, char **argv) {
       output.strides = NULL;
       output.byte_offset = 0;
 
-      tvm_runtime_get_output(handle, 0, &output);
-      //TODO: add this to final close
-      // tvm_runtime_destroy(handle);
-      // and clode the server_socket
+      tvm_runtime_get_output(tvm_handle, 0, &output);
 
       float max_iter = -FLT_MAX;
       int32_t max_index = -1;
@@ -270,7 +272,13 @@ int main(int argc, char **argv) {
       LED_Set(max_index);
       // nanosleep(&sleepTime, NULL);
     }
+
+    if (status < 0) {
+      server_socket = OpenIpV4Socket(serverIP, serverPort, SOCK_STREAM, &exitCode);
+    }
   }
+
+  tvm_runtime_destroy(tvm_handle);
 
   ShutDownAndCleanup();
   return exitCode;

@@ -1,0 +1,3 @@
+[submodule "3rdparty/ML_KWS"]
+	path = 3rdparty/ML_KWS
+	url = https://github.com/ARM-software/ML-KWS-for-MCU.git
