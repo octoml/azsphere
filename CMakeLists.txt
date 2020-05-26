@@ -14,6 +14,7 @@ OPTION(DEMO "Is this demo?" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
 OPTION(KEYWORD "Is this keyword model?" OFF)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
+OPTION(HELLO "Is this hello world?" ON)
 
 #3rdparty
 SET(ML_KWS 3rdparty/ML_KWS/Deployment)
@@ -51,6 +52,8 @@ elseif(KEYWORD_DEMO)
   message("INFO: Building KEYWORD demo!")
   SET(CFILES keyword_demo_feature.c bundle_static.c)
   SET(OBJS build/keyword_model.o)
+elseif(HELLO)
+  SET(CFILES hello.c)
 else()
   message("INFO: Hello test!")
   SET(CFILES mfcc_test.cpp 
@@ -65,12 +68,12 @@ else()
       ${CMSIS}/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_f32.c
       ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S
   )
+  set_property(SOURCE ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S PROPERTY LANGUAGE C)
 endif()
 
 # Create executable
 ADD_EXECUTABLE(${PROJECT_NAME} ${CFILES} ${OBJS})
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} applibs pthread gcc_s c)
-set_property(SOURCE ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S PROPERTY LANGUAGE C)
 
 # Add TVM headers
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/include)
