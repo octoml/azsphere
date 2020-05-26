@@ -33,7 +33,8 @@
         "system_error": "c",
         "cstdio": "c",
         "string.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "kws_ds_cnn.h": "c"
     },
     "git.ignoreLimitWarning": true
 }

@@ -2,7 +2,7 @@
 #  Licensed under the MIT License.
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
-PROJECT(octoml_AS C CXX)
+PROJECT(octoml_AS C CXX ASM)
 azsphere_configure_tools(TOOLS_REVISION "20.04")
 azsphere_configure_api(TARGET_API_SET "5")
 
@@ -15,6 +15,12 @@ OPTION(CIFAR "Is this cifar?" OFF)
 OPTION(KEYWORD "Is this keyword model?" OFF)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
 
+#3rdparty
+SET(ML_KWS 3rdparty/ML_KWS/Deployment)
+SET(CMSIS 3rdparty/CMSIS_5/CMSIS)
+
+#enable_language(ASM)
+#set(CAN_USE_ASSEMBLER TRUE)
 
 # object files including the model
 if(TEST)
@@ -47,12 +53,24 @@ elseif(KEYWORD_DEMO)
   SET(OBJS build/keyword_model.o)
 else()
   message("INFO: Hello test!")
-  SET(CFILES mfcc_test.cpp src/example.cpp)
+  SET(CFILES mfcc_test.cpp 
+      src/example.cpp src/kws.cpp
+      ${ML_KWS}/Source/MFCC/mfcc.cpp
+      ${CMSIS}/DSP/Source/TransformFunctions/arm_rfft_fast_f32.c
+      ${CMSIS}/DSP/Source/TransformFunctions/arm_cfft_f32.c
+      ${CMSIS}/DSP/Source/TransformFunctions/arm_cfft_radix8_f32.c
+      ${CMSIS}/DSP/Source/CommonTables/arm_common_tables.c
+      ${CMSIS}/DSP/Source/CommonTables/arm_const_structs.c
+      ${CMSIS}/DSP/Source/StatisticsFunctions/arm_max_f32.c
+      ${CMSIS}/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_f32.c
+      ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S
+  )
 endif()
 
 # Create executable
 ADD_EXECUTABLE(${PROJECT_NAME} ${CFILES} ${OBJS})
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} applibs pthread gcc_s c)
+set_property(SOURCE ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S PROPERTY LANGUAGE C)
 
 # Add TVM headers
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/include)
@@ -62,9 +80,8 @@ TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
 # Project Headers
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ./include)
 # 3rdparty libraries
-SET(ML_KWS 3rdparty/ML_KWS/Deployment)
-SET(CMSIS 3rdparty/CMSIS_5/CMSIS)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Source/MFCC)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Examples/simple_test)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMSIS}/DSP/Include)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMSIS}/Core/Include)
 

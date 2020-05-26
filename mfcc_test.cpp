@@ -8,15 +8,18 @@
 #include "config.c"
 
 #include "example.h"
-#include "mfcc.h"
+#include "kws.h"
+#include "wav_data.h"
 
+int16_t audio_buffer[16000]=WAVE_DATA;
 
 int main(void)
 {
     EXAMPLE test;
     test.Print();
 
-    MFCC *mfcc;
+    KWS kws(audio_buffer);
+    kws.extract_features();
 
     int fd = GPIO_OpenAsOutput(LED1[0], GPIO_OutputMode_PushPull, GPIO_Value_High);
     if (fd < 0) {
