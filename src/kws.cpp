@@ -22,6 +22,7 @@ void KWS::init_kws()
   num_out_classes = 12;
   //TODO: fix this
   // mfcc = new MFCC(num_mfcc_features, frame_len, mfcc_dec_bits);
+  mfcc->init(num_mfcc_features, frame_len, mfcc_dec_bits);
   mfcc_buffer = (q7_t *)malloc(num_frames * num_mfcc_features * sizeof(q7_t));
   // output = new q7_t[num_out_classes];
   // averaged_output = new q7_t[num_out_classes];

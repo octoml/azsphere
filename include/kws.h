@@ -30,10 +30,10 @@ public:
   int num_out_classes;
   int audio_block_size;
   int audio_buffer_size;
-
+  void init_kws();
+  
 private:
   MFCC *mfcc;
-  void init_kws();
   int mfcc_buffer_size;
   int recording_win;
   int sliding_window_len;
