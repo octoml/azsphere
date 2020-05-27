@@ -14,14 +14,12 @@ OPTION(DEMO "Is this demo?" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
 OPTION(KEYWORD "Is this keyword model?" OFF)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
-OPTION(HELLO "Is this hello world?" ON)
+OPTION(HELLO "Is this hello world?" OFF)
 
 #3rdparty
 SET(ML_KWS 3rdparty/ML_KWS/Deployment)
 SET(CMSIS 3rdparty/CMSIS_5/CMSIS)
 
-#enable_language(ASM)
-#set(CAN_USE_ASSEMBLER TRUE)
 
 # object files including the model
 if(TEST)
@@ -62,10 +60,6 @@ else()
       ${CMSIS}/DSP/Source/TransformFunctions/arm_rfft_fast_f32.c
       ${CMSIS}/DSP/Source/TransformFunctions/arm_cfft_f32.c
       ${CMSIS}/DSP/Source/TransformFunctions/arm_cfft_radix8_f32.c
-      ${CMSIS}/DSP/Source/CommonTables/arm_common_tables.c
-      ${CMSIS}/DSP/Source/CommonTables/arm_const_structs.c
-      ${CMSIS}/DSP/Source/StatisticsFunctions/arm_max_f32.c
-      ${CMSIS}/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_f32.c
       ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S
   )
   set_property(SOURCE ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S PROPERTY LANGUAGE C)
@@ -81,7 +75,7 @@ TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/src)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dmlc-core/include)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
 # Project Headers
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ./include)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
 # 3rdparty libraries
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Source/MFCC)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Examples/simple_test)
