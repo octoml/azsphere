@@ -93,7 +93,7 @@ def generate_schedules(model=None, layer=0, schedule_path=None):
 
     if model == 'keyword_spotting':
         shape_dict = {'Mfcc': (1, 49, 10)}
-        mod = get_module('model/keyword_model/module_gs_4.0.pickle')
+        mod = get_module('model/keyword_model/module_gs_4.0_conv_notquantized.pickle')
 
         with open('build/mod.log', 'w') as f:
             f.write(str(mod.astext()))
@@ -256,9 +256,13 @@ def run(opts, task_path):
     return 0
 
 def create_best_log(opts, build_path=None, logfile=None):
-    # best_index = [0, 0, 0, 0]   #best footprint for keyword
-    # best_index = [3, 107, 153, 1]   #best runtime for keyword
-    best_index = [0, 0, 0, 1]   #best runtime for keyword
+    # best_index = [0, 0, 0, 0]   #best footprint for keyword conv quantized
+    # best_index = [3, 107, 153, 1]   #best runtime for keyword conv quantized
+    # best_index = [0, 0, 0, 1]   #best footprint for keyword conv0 not quantized
+    # best_index = [21, 156, 151, 23]   #best runtime for keyword conv0 not quantized
+    # best_index = [21, 101, 49, 23]   #best footprint and runtime for keyword conv0 not quantized
+    best_index = [21, 0, 0, 23]   #test1
+    # best_index = [21, 156, 151, 23]   #test2
     tasks_dirs = [dI for dI in os.listdir(build_path) if os.path.isdir(os.path.join(build_path, dI))]
     tasks_dirs.sort()
     assert(len(best_index)== len(tasks_dirs))
@@ -312,7 +316,7 @@ if __name__ == '__main__':
         run(opts=opts, task_path=os.path.join(build_dir, task))
 
     if opts.best:
-        create_best_log(opts=opts, build_path=build_dir, logfile='keyword_footprint_min_1.txt')
+        create_best_log(opts=opts, build_path=build_dir, logfile='ks_conv_notquantized_test1.txt')
     # if opts.build:
     #     if not opts.source:
     #         raise

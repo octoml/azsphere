@@ -235,6 +235,7 @@ def plot_footprint(opts, build_path=None, runtime_path=None):
 
 		all_tasks_size.append(task_size)
 	
+
 	#create CSV of time and footprint
 	if runtime_path:
 		if not runtime_path:
@@ -244,12 +245,37 @@ def plot_footprint(opts, build_path=None, runtime_path=None):
 			azure_results = azure_to_json(os.path.join(runtime_path, f'task_{str(ii)}.dump'))
 
 			time_footprint = []
+			time_footprint_B = []
 			task_footprint = all_tasks_size[ii]
 			for jj in range(len(azure_results)):
 				item = azure_results[jj]
 				time = item['time']
-				size = task_footprint[jj] / 1024	#convert to KB
-				time_footprint.append([time, size])
+				size_KB = task_footprint[jj] / 1024	#convert to KB
+				size_B = task_footprint[jj]
+				time_footprint.append([time, size_KB])
+				time_footprint_B.append([time, size_B])
+
+			if opts.multi:
+				# if float(opts.multi_opt) > 1:
+				# 	raise ValueError('Scale is not valid!')
+				scale = 1 + float(opts.multi)
+				print(f'scale: {scale}')
+
+				time_footprint_B_sorted = sorted(time_footprint_B, 
+										key=lambda time_footprint_B:time_footprint_B[0])
+				time_min = time_footprint_B_sorted[0]
+				time_min = time_min[0]
+				print(f'time_min: {time_min}, ::: {float(scale*time_min)}')
+				data = [x for x in time_footprint_B_sorted if x[0] <= float(scale*time_min)]
+				data = sorted(data, key=lambda data:data[1])
+				# print(data)
+				print(len(data))
+				data_best = data[0]
+				best_ind = -1
+				for ii, item in enumerate(time_footprint_B):
+					if item[0] == data_best[0] and item[1] == data_best[1]:
+						best_ind = ii
+				print(f'Multi-Opt\t=>\tRuntime: {data_best[0]}\tFootprint: {data_best[1]}\tIndex: {best_ind}')
 
 			if csv_generate:
 				csv_path = os.path.join(build_path, f'fooprint_task_{str(ii).zfill(4)}.csv')
@@ -267,6 +293,7 @@ if __name__ == '__main__':
 	parser.add_argument('-s', '--source', default=None)
 	parser.add_argument('--footprint', action='store_true')
 	parser.add_argument('--csv', action='store_true')
+	parser.add_argument('--multi', default=None)
 	opts = parser.parse_args()
 
 	azure = []
@@ -287,11 +314,11 @@ if __name__ == '__main__':
 		# 					   runtime_path='/home/parallels/azure-sphere/tuning/server/cifar'
 		# 					   )
 		items = plot_footprint(opts=opts, build_path='build',
-							   runtime_path='/home/parallels/azure-sphere/tuning/server/keyword')
-		for ii in range(len(items)):
-			task = items[ii]
+							   runtime_path='/home/parallels/azure-sphere/tuning/server/keyword_conv_notquantized')
+		# print(items)
+		# print(len(items))
+		for ii, task in enumerate(items):
 			# print(task)
-			# print("\n")
 			sch_min = min(task)
 			sch_min_ind = task.index(sch_min)
 			print(f'task: {ii},\tmin: {sch_min},\tindex: {sch_min_ind}')
