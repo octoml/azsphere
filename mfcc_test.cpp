@@ -19,6 +19,7 @@ int main(void)
     test.Print();
 
     KWS kws(audio_buffer);
+    kws.init_kws();
     kws.extract_features();
 
     int fd = GPIO_OpenAsOutput(LED1[0], GPIO_OutputMode_PushPull, GPIO_Value_High);
