@@ -6,6 +6,8 @@ import json
 from enum import Enum
 import argparse
 import os
+import time
+import re
 
 IP = '192.168.0.10'
 PORT = 11000
@@ -22,6 +24,13 @@ def exitHandler():
 	global sock
 	print("closing socket!")
 	sock.close()
+
+ 
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    return [ atoi(c) for c in re.split('(\d+)',text) ]
 
 def server_start(opts):
 	global sock
@@ -42,17 +51,22 @@ def server_start(opts):
 	numOfConnection = 1
 
 	if opts.demo:
-		#get demo files and data
-		wav_files = []
-		for file in os.listdir(opts.wav):
-			if file.endswith('.wav'):
-				wav_files.append(file)
-		# wav_files = ['2_yes.wav']
-		print(wav_files)
+		if opts.wav:
+			#get demo files and data
+			wav_files = []
+			for file in os.listdir(opts.wav):
+				if file.endswith('.wav'):
+					wav_files.append(file)
+			wav_files.sort(key=natural_keys)
+			print(wav_files)
 
-		wav_data = [None] * len(wav_files)
-		for ii, item in enumerate(wav_files):
-			wav_data[ii] = prepare_input(os.path.join(opts.wav, item)).astype(np.float32).tobytes()
+			wav_data = [None] * len(wav_files)
+			for ii, item in enumerate(wav_files):
+				wav_data[ii] = prepare_input(os.path.join(opts.wav, item)).astype(np.float32).tobytes()
+		elif opts.live:
+			pass
+		else:
+			raise ValueError('Argument missing!')
 
 	while True:
 		# Wait for a connection
@@ -74,9 +88,14 @@ def server_start(opts):
 						print("data: " + str(data))
 					if data:
 						if 'ready' in str(data):
-							connection.send(wav_data[data_counter])
-							data_counter += 1
-							data_counter = data_counter % len(wav_data)
+							if opts.wav:
+								time.sleep(2)
+								print(f'Demo: {wav_files[data_counter]}')
+								connection.send(wav_data[data_counter])
+								data_counter += 1
+								data_counter = data_counter % len(wav_data)
+							elif opts.live:
+								input("enter")
 						else:
 							continue
 					else:
@@ -99,7 +118,8 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--log', default='')
 	parser.add_argument('--demo', action='store_true')
-	parser.add_argument('--wav', default='', help='Path to a directory with WAV files')
+	parser.add_argument('--wav', default=None, help='Path to a directory with WAV files')
+	parser.add_argument('--live', action='store_true')
 	opts = parser.parse_args()
 
 	if opts.demo:
