@@ -11,10 +11,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <math.h>
-#include <hw/sample_hardware.h>
-#include <tvm/runtime/c_runtime_api.h>
 #include <float.h>
 
+#include <tvm/runtime/c_runtime_api.h>
 #include "config.c"
 #include "bundle.h"
 #include "utils.h"
@@ -32,7 +31,7 @@
 #define out_dim0    1
 #define out_dim1    12
 
-#define NUM_EXP     1000
+#define NUM_EXP     100
 
 static ExitCode exitCode = ExitCode_Success;
 #define interface     "eth0"
