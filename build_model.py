@@ -200,18 +200,26 @@ def build_keyword_model(opts):
     
     print("Compile...")
     if opts.tuned:
-        print("INFO: Model tunning for runtime!")
-        with autotvm.apply_history_best(os.path.join('tuning', 'keyword_runtime_min.txt')):
+        history_file = 'ks_conv_notquantized_runtime.txt'
+        print(f'INFO: Model tuning for runtime with file {history_file}!')
+        with autotvm.apply_history_best(os.path.join('tuning', history_file)):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
                     mod, target=TARGET)
     elif opts.footprint:
-        history_file = 'keyword_footprint_min_1.txt'
+        history_file = 'ks_conv_notquantized_footprint.txt'
         print(f'INFO: Model tuning for footprint with file {history_file}!')
         with autotvm.apply_history_best(os.path.join('tuning', history_file)):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
-                    mod, target=TARGET)  
+                    mod, target=TARGET)
+    elif opts.multi:
+        history_file = 'ks_conv_notquantized_test1.txt'
+        print(f'INFO: Model tuning for footprint and runtime with file {history_file}!')
+        with autotvm.apply_history_best(os.path.join('tuning', history_file)):
+            with relay.build_config(opt_level=3):
+                graph, lib, out_params = relay.build_module.build(
+                    mod, target=TARGET)
     else:
         print("INFO: No Tuning!")
         with relay.build_config(opt_level=3):
@@ -237,7 +245,7 @@ def build_keyword_model(opts):
     with open('build/graph.log', 'w') as f:
         f.write(str(graph))
 
-    input_data = prepare_input('tuning/model/keyword_model/silence.wav')
+    input_data = prepare_input('tuning/model/keyword_model/samples/0_silence.wav')
     ctx = tvm.context(local_target, 0)
     m = tvm.contrib.graph_runtime.create(graph_test, lib_test, ctx)
     m.set_input('Mfcc', input_data)
@@ -574,6 +582,7 @@ if __name__ == '__main__':
     parser.add_argument('--keyword', action='store_true')
     parser.add_argument('--tuned', action='store_true')
     parser.add_argument('--footprint', action='store_true')
+    parser.add_argument('--multi', action='store_true')
     opts = parser.parse_args()
     
     build_dir = os.path.abspath(opts.out_dir)

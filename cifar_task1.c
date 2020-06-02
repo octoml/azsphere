@@ -14,7 +14,6 @@
 #include <hw/sample_hardware.h>
 #include <tvm/runtime/c_runtime_api.h>
 
-// #include "config.c"
 #include "bundle.h"
 #include "network.h"
 #include "utils.h"
@@ -29,6 +28,8 @@
 #define out_dim1   64
 #define out_dim2   25
 #define out_dim3   5
+
+#define NUM_EXP   100
 
 static ExitCode exitCode = ExitCode_Success;
 static char interface[] = "eth0";
@@ -60,6 +61,7 @@ int main(int argc, char **argv) {
   int fid;
   off_t fs;
   int readError = 0;
+  float duration;
 
   int fd = GPIO_OpenAsOutput(SAMPLE_LED, GPIO_OutputMode_PushPull, GPIO_Value_High);
   if (fd < 0) {
@@ -116,10 +118,16 @@ int main(int argc, char **argv) {
   input.byte_offset = 0;
 
   tvm_runtime_set_input(handle, "A", &input);
-  gettimeofday(&t2, 0);
+  duration = 0;
+  for (int ii=0; ii<NUM_EXP; ii++) {
+    gettimeofday(&t2, 0);
+  
+    tvm_runtime_run(handle);
+    gettimeofday(&t3, 0);
 
-  tvm_runtime_run(handle);
-  gettimeofday(&t3, 0);
+    duration += (float)(t3.tv_sec-t2.tv_sec)*1000 + (float)(t3.tv_usec-t2.tv_usec)/1000.f;
+  }
+  duration = duration / (float)(NUM_EXP);
 
   free(input_storage);
  
@@ -183,7 +191,6 @@ int main(int argc, char **argv) {
          (float)(t5.tv_sec-t4.tv_sec)*1000 + (float)(t5.tv_usec-t4.tv_usec)/1000.f);
   #endif
 
-  float duration = (float)(t3.tv_sec-t2.tv_sec)*1000 + (float)(t3.tv_usec-t2.tv_usec)/1000.f;
   len = message(id, Message_TIME, msg);
   msg[len] = ',';
   len += 1;
