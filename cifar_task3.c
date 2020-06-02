@@ -29,6 +29,8 @@
 #define out_dim2  25
 #define out_dim3  5
 
+#define NUM_EXP   100
+
 static ExitCode exitCode = ExitCode_Success;
 #define interface     "eth0"
 #define serverPort    11000
@@ -49,6 +51,7 @@ int main(int argc, char **argv) {
   gettimeofday(&t0, 0);
   int fid;
   off_t fs;
+  float duration;
 
   int fd = GPIO_OpenAsOutput(SAMPLE_LED, GPIO_OutputMode_PushPull, GPIO_Value_High);
   if (fd < 0) {
@@ -91,15 +94,15 @@ int main(int argc, char **argv) {
   gettimeofday(&t1, 0);
 
   // Read data
-  int8_t* input_storage;
-  Read_File_Int8(data_file, &input_storage);
+  float* input_storage;
+  Read_File_Float(data_file, &input_storage);
 
   DLTensor input;
   input.data = input_storage;
   DLContext ctx = {kDLCPU, 0};
   input.ctx = ctx;
   input.ndim = 4;
-  DLDataType dtype = {kDLInt, 8, 1};
+  DLDataType dtype = {kDLFloat, 32, 1};
   input.dtype = dtype;
   int64_t shape [4] = {in_dim0, in_dim1, in_dim2, in_dim3};
   input.shape = shape;
@@ -107,23 +110,29 @@ int main(int argc, char **argv) {
   input.byte_offset = 0;
 
   tvm_runtime_set_input(handle, "A", &input);
-  gettimeofday(&t2, 0);
 
-  tvm_runtime_run(handle);
-  gettimeofday(&t3, 0);
+  duration = 0;
+  for (int ii=0; ii<NUM_EXP; ii++) {
+    gettimeofday(&t2, 0);
+  
+    tvm_runtime_run(handle);
+    gettimeofday(&t3, 0);
+
+    duration += (float)(t3.tv_sec-t2.tv_sec)*1000 + (float)(t3.tv_usec-t2.tv_usec)/1000.f;
+  }
+  duration = duration / (float)(NUM_EXP);
 
   free(params_data);
   free(input_storage);
   free(graph_data);
-  // free(&input);
 
-  int32_t* output_storage = malloc(out_dim0 * out_dim1 * out_dim2 * out_dim3 * sizeof(int32_t));
+  float* output_storage = malloc(out_dim0 * out_dim1 * out_dim2 * out_dim3 * sizeof(float));
   DLTensor output;
   output.data = output_storage;
   DLContext out_ctx = {kDLCPU, 0};
   output.ctx = out_ctx;
   output.ndim = 4;
-  DLDataType out_dtype = {kDLInt, 32, 1};
+  DLDataType out_dtype = {kDLFloat, 32, 1};
   output.dtype = out_dtype;
   int64_t out_shape [4] = {out_dim0, out_dim1, out_dim2, out_dim3};
   output.shape = out_shape;
@@ -137,8 +146,8 @@ int main(int argc, char **argv) {
   gettimeofday(&t5, 0);
 
   //Read expected output
-  int32_t* exp_out;
-  Read_File_Int32(output_file, &exp_out);
+  float* exp_out;
+  Read_File_Float(output_file, &exp_out);
 
   bool result = true;
   int output_size = out_dim0 * out_dim1 * out_dim2 * out_dim3;
@@ -175,7 +184,6 @@ int main(int argc, char **argv) {
          (float)(t5.tv_sec-t4.tv_sec)*1000 + (float)(t5.tv_usec-t4.tv_usec)/1000.f);
   #endif  /* AS_DEBUG */
 
-  float duration = (float)(t3.tv_sec-t2.tv_sec)*1000 + (float)(t3.tv_usec-t2.tv_usec)/1000.f;
   len = message(id, Message_TIME, msg);
   msg[len] = ',';
   len += 1;
