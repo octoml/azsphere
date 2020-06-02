@@ -203,4 +203,14 @@ int Read_File_Float(const char * filename, float** data) {
   close(fid);
 }
 
+void CloseFdAndPrintError(int fd, const char *fdName)
+{
+    if (fd >= 0) {
+        int result = close(fd);
+        if (result != 0) {
+            fprintf(stdout, "ERROR: Could not close fd %s: %s (%d).\n", fdName, strerror(errno), errno);
+        }
+    }
+}
+
 #endif  /* AS_UTILS_H_ */
