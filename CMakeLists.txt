@@ -2,7 +2,7 @@
 #  Licensed under the MIT License.
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
-PROJECT(octoml_AS C CXX ASM)
+PROJECT(octoml_AS C)
 azsphere_configure_tools(TOOLS_REVISION "20.04")
 azsphere_configure_api(TARGET_API_SET "5+Beta2004")
 
@@ -12,10 +12,11 @@ OPTION(CONV2D "Is this conv2d?" OFF)
 OPTION(CONV2D_NET "Is this conv2d network?" OFF)
 OPTION(DEMO "Is this demo?" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
-OPTION(KEYWORD "Is this keyword model?" OFF)
+OPTION(KEYWORD "Is this keyword model?" ON)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
 OPTION(HELLO "Is this hello world?" OFF)
-OPTION(INTERCOMM "Is this intercore communication?" ON)
+OPTION(INTERCOMM "Is this intercore communication?" OFF)
+OPTION(DEMO1 "TVM, Intercore connection" OFF)
 
 #3rdparty
 SET(ML_KWS 3rdparty/ML_KWS/Deployment)
@@ -45,7 +46,9 @@ elseif(CIFAR)
   SET(OBJS build/cifar_model.o)
 elseif(KEYWORD)
   message("INFO: Building KEYWORD test!")
-  SET(CFILES keyword_test.c bundle_static.c)
+  SET(CFILES  keyword_test.c
+              src/bundle_static.c src/utils.c
+  )
   SET(OBJS build/keyword_model.o)
 elseif(KEYWORD_DEMO)
   message("INFO: Building KEYWORD demo!")
@@ -57,6 +60,13 @@ elseif(INTERCOMM)
   SET(CFILES  intercomm.c
               src/eventloop_timer_utilities.c
   )
+elseif(DEMO1)
+  SET(CFILES  demo1.c 
+              src/bundle_static.c
+              src/utils.c src/eventloop_timer_utilities.c
+              src/intercore.c src/tvmruntime.c
+  )
+  SET(OBJS build/keyword_model.o)
 else()
   message("INFO: Hello test!")
   SET(CFILES mfcc_test.cpp 
@@ -84,12 +94,12 @@ TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/src)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dmlc-core/include)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
 # Project Headers
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR})
 # 3rdparty libraries
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Source/MFCC)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Examples/simple_test)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMSIS}/DSP/Include)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMSIS}/Core/Include)
+#TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Source/MFCC)
+#TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Examples/simple_test)
+#TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMSIS}/DSP/Include)
+#TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMSIS}/Core/Include)
 
 azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "Hardware/mt3620_rdb" TARGET_DEFINITION "my_hardware.json")
 
@@ -105,7 +115,7 @@ elseif(DEMO)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/cat.bin")
 elseif(CIFAR)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/cifar_data.bin;build/cifar_output.bin;build/cifar_params.bin;build/cifar_graph.bin;build/id.bin")
-elseif(KEYWORD OR KEYWORD_DEMO)
+elseif(KEYWORD OR KEYWORD_DEMO OR DEMO1)
   azsphere_target_add_image_package(
     ${PROJECT_NAME}
     RESOURCE_FILES

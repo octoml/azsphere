@@ -14,10 +14,10 @@
 #include <float.h>
 
 #include <tvm/runtime/c_runtime_api.h>
-#include "config.c"
-#include "bundle.h"
-#include "utils.h"
-#include "exitcode.h"
+#include "include/config.h"
+#include "include/bundle.h"
+#include "include/utils.h"
+#include "include/exitcode.h"
 
 #if AS_NETWORKING
 #include "network.h"

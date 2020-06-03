@@ -20,8 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "bundle.h"
-#include "runtime.c"
+#include "include/bundle.h"
+#include "include/runtime.h"
 
 TVM_DLL void * tvm_runtime_create(const char * json_data,
                                   const char * params_data,
