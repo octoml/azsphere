@@ -47,11 +47,6 @@ ExitCode InterCoreSocketEventHandler(EventLoop* el, int fd, EventLoop_IoEvents e
   InterCoreRXFlag = true;
   
   fprintf(stdout, "Received %d bytes: ", bytesReceived);
-  for (int i = 0; i < bytesReceived; ++i) {
-    fprintf(stdout, "%c", isprint(InterCoreRXBuff[i]) ? InterCoreRXBuff[i] : '.');
-  }
-  fprintf(stdout, "\n");
-
   return ExitCode_Success;
 }
 

@@ -4,9 +4,9 @@
 #include <applibs/eventloop.h>
 #include "exitcode.h"
 
-#define InterCoreRXBuffSize     32
+#define InterCoreRXBuffSize     490
 
-extern char InterCoreRXBuff[InterCoreRXBuffSize];
+extern int8_t InterCoreRXBuff[InterCoreRXBuffSize];
 extern volatile bool InterCoreRXFlag;
 
 ExitCode InterCoreInit(EventLoop* event_loop, EventRegistration* socket_event_reg, 

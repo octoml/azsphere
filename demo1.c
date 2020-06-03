@@ -39,7 +39,7 @@ static EventLoopTimer *sendTimer = NULL;
 static EventRegistration *socketEventReg = NULL;
 // static volatile sig_atomic_t exitCode = ExitCode_Success;
 static ExitCode exitCode = ExitCode_Success;
-char InterCoreRXBuff[InterCoreRXBuffSize];
+int8_t InterCoreRXBuff[InterCoreRXBuffSize];
 volatile bool InterCoreRXFlag;
 int* tvm_handle;
 static char * labels [12] = {"silence", "unknown", "yes", "no", "up", "down",
@@ -147,7 +147,7 @@ static ExitCode App_Init() {
     fprintf(stdout, "Could not create event loop.\n");
     return ExitCode_Init_EventLoop;
   }
-  
+
   tmp = InterCoreInit(eventLoop, socketEventReg, sockFd, rtAppComponentId);
   InterCoreRXFlag = false;
 
@@ -192,6 +192,10 @@ int main(void)
       // fprintf(stdout, "label: %s\n", labels[index]);
       // LED_Set(index);
       InterCoreRXFlag = false;
+      Log_Debug("RX: ");
+      for(int i=0; i<490; i++){
+        Log_Debug("%d, ", InterCoreRXBuff[i]);
+      }
 
       Log_Debug("Intercore inside\n");
     }
