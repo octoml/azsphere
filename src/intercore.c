@@ -22,7 +22,6 @@ ExitCode InterCoreInit(EventLoop* event_loop, EventRegistration* socket_event_re
     fprintf(stdout, "ERROR: Unable to create socket: %d (%s)\n", errno, strerror(errno));
     return ExitCode_Init_Connection;
   }
-  InterCoreRXFlag = true;
   
   // Register handler for incoming messages from real-time capable application.
   socket_event_reg = EventLoop_RegisterIo(event_loop, app_socket, EventLoop_Input, 
@@ -45,7 +44,8 @@ ExitCode InterCoreSocketEventHandler(EventLoop* el, int fd, EventLoop_IoEvents e
     fprintf(stdout, "ERROR: Unable to receive message: %d (%s)\n", errno, strerror(errno));
     return ExitCode_SocketHandler_Recv;
   }
-
+  InterCoreRXFlag = true;
+  
   fprintf(stdout, "Received %d bytes: ", bytesReceived);
   for (int i = 0; i < bytesReceived; ++i) {
     fprintf(stdout, "%c", isprint(InterCoreRXBuff[i]) ? InterCoreRXBuff[i] : '.');

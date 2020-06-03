@@ -39,8 +39,8 @@ static EventLoopTimer *sendTimer = NULL;
 static EventRegistration *socketEventReg = NULL;
 // static volatile sig_atomic_t exitCode = ExitCode_Success;
 static ExitCode exitCode = ExitCode_Success;
-char InterCoreRXBuff [32];
-bool InterCoreRXFlag;
+char InterCoreRXBuff[InterCoreRXBuffSize];
+volatile bool InterCoreRXFlag;
 int* tvm_handle;
 static char * labels [12] = {"silence", "unknown", "yes", "no", "up", "down",
                           "left", "right", "on", "off", "stop", "go"};
@@ -142,13 +142,14 @@ static int LED_Set(uint8_t label) {
 static ExitCode App_Init() {
   GPIO_Init();
   ExitCode tmp = ExitCode_Success;
-  // eventLoop = EventLoop_Create();
-  // if (eventLoop == NULL) {
-  //   fprintf(stdout, "Could not create event loop.\n");
-  //   return ExitCode_Init_EventLoop;
-  // }
-  // tmp = InterCoreInit(eventLoop, socketEventReg, sockFd, rtAppComponentId);
-  // InterCoreRXFlag = false;
+  eventLoop = EventLoop_Create();
+  if (eventLoop == NULL) {
+    fprintf(stdout, "Could not create event loop.\n");
+    return ExitCode_Init_EventLoop;
+  }
+  
+  tmp = InterCoreInit(eventLoop, socketEventReg, sockFd, rtAppComponentId);
+  InterCoreRXFlag = false;
 
   tvm_handle = TVMInit(param_file, graph_file);
   if (tvm_handle < 0) {
@@ -159,50 +160,50 @@ static ExitCode App_Init() {
 
 int main(void)
 {
+  fprintf(stdout, "Demo1 starting...\n");
   exitCode = App_Init();
 
-  // while (exitCode == ExitCode_Success) {
-    // EventLoop_Run_Result result = EventLoop_Run(eventLoop, -1, true);
+  while (exitCode == ExitCode_Success) {
+    EventLoop_Run_Result result = EventLoop_Run(eventLoop, -1, true);
     // Continue if interrupted by signal, e.g. due to breakpoint being set.
 
-    // if (InterCoreRXFlag) {
-      float* tvmOutput = (float *)malloc(out_dim0 * out_dim1 * sizeof(float));;
-      // TVMCallback(InterCoreRXBuff, tvmOutput);
-      float* input_storage;
-      Read_File_Float(data_file, &input_storage);
-      TVMCallback(tvm_handle, input_storage, tvmOutput);
+    if (InterCoreRXFlag) {
+      // float* input_storage;
+      // float* tvmOutput = (float *)malloc(out_dim0 * out_dim1 * sizeof(float));;
+      // Read_File_Float(data_file, &input_storage);
+      // TVMCallback(tvm_handle, input_storage, tvmOutput);
 
       // Read expected output
-      float* exp_out;
-      Read_File_Float(output_file, &exp_out);
+      // float* exp_out;
+      // Read_File_Float(output_file, &exp_out);
 
-      bool result = true;
-      int output_size = out_dim0 * out_dim1;
-      for (int i = 0; i < output_size; ++i) {
-        if (fabs(tvmOutput[i] - exp_out[i]) >= 1e-3f) {
-          result = false;
-          #if AS_DEBUG
-          fprintf(stdout, "got %f, expected %f\n", tvmOutput[i], exp_out[i]);
-          #endif  /* AS_DEBUG */
-          break;
-        }
-      }
-
-
-      int index = TVMMaxIndex(tvmOutput);
-      fprintf(stdout, "label: %s\n", labels[index]);
-      LED_Set(index);
+      // bool result = true;
+      // int output_size = out_dim0 * out_dim1;
+      // for (int i = 0; i < output_size; ++i) {
+      //   if (fabs(tvmOutput[i] - exp_out[i]) >= 1e-3f) {
+      //     result = false;
+      //     #if AS_DEBUG
+      //     fprintf(stdout, "got %f, expected %f\n", tvmOutput[i], exp_out[i]);
+      //     #endif  /* AS_DEBUG */
+      //     break;
+      //   }
+      // }
+      // int index = TVMMaxIndex(tvmOutput);
+      // fprintf(stdout, "label: %s\n", labels[index]);
+      // LED_Set(index);
       InterCoreRXFlag = false;
-    // }
 
-    // if (result == EventLoop_Run_Failed && errno != EINTR) {
-        // exitCode = ExitCode_Main_EventLoopFail;
-    // }
-  // }
+      Log_Debug("Intercore inside\n");
+    }
+
+    if (result == EventLoop_Run_Failed && errno != EINTR) {
+        exitCode = ExitCode_Main_EventLoopFail;
+    }
+  }
 
   // CloseHandlers();
-  while(1){
-    ;;
-  }
+  // while(1){
+  //   ;;
+  // }
   return exitCode;
 }
