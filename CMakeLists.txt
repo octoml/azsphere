@@ -4,7 +4,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
 PROJECT(octoml_AS C CXX ASM)
 azsphere_configure_tools(TOOLS_REVISION "20.04")
-azsphere_configure_api(TARGET_API_SET "5")
+azsphere_configure_api(TARGET_API_SET "5+Beta2004")
 
 # Set for unit test or demo
 OPTION(TEST "Is this test?" OFF)
@@ -15,6 +15,7 @@ OPTION(CIFAR "Is this cifar?" OFF)
 OPTION(KEYWORD "Is this keyword model?" OFF)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
 OPTION(HELLO "Is this hello world?" OFF)
+OPTION(INTERCOMM "Is this intercore communication?" ON)
 
 #3rdparty
 SET(ML_KWS 3rdparty/ML_KWS/Deployment)
@@ -52,6 +53,10 @@ elseif(KEYWORD_DEMO)
   SET(OBJS build/keyword_model.o)
 elseif(HELLO)
   SET(CFILES hello.c)
+elseif(INTERCOMM)
+  SET(CFILES  intercomm.c
+              src/eventloop_timer_utilities.c
+  )
 else()
   message("INFO: Hello test!")
   SET(CFILES mfcc_test.cpp 

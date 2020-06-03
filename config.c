@@ -1,5 +1,5 @@
 #pragma once
-#include "Hardware/mt3620_rdb/inc/hw/sample_hardware.h"
+#include "Hardware/mt3620_rdb/inc/hw/mt3620_rdb.h"
 
 #define AS_DEBUG                1
 #define AS_NETWORKING           0

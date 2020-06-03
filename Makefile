@@ -1,6 +1,6 @@
 CMAKE_FLAGS = -G "Ninja" \
 	-DCMAKE_TOOLCHAIN_FILE="/opt/azurespheresdk/CMakeFiles/AzureSphereToolchain.cmake" \
-	-DAZURE_SPHERE_TARGET_API_SET="5" \
+	-DAZURE_SPHERE_TARGET_API_SET="5+Beta2004" \
 	-DCMAKE_BUILD_TYPE="Debug" \
 	../
 
@@ -22,13 +22,16 @@ program:
 	azsphere device sideload deploy --imagepackage $(build_dir)/octoml_AS.imagepackage
 
 start:
-	azsphere device app start
+	azsphere device app start --componentID 1689d8b2-c835-2e27-27ad-e894d6d15fa9
 
 stop:
-	azsphere device app stop
+	azsphere device app stop --componentID 1689d8b2-c835-2e27-27ad-e894d6d15fa9
 
-delete:
-	azsphere device sideload delete
+delete_a7:
+	azsphere device sideload delete --componentID 1689d8b2-c835-2e27-27ad-e894d6d15fa9
+
+delete_m4:
+	azsphere device sideload delete --componentID 18b8807b-541b-4953-8c9f-9135eedcc376
 
 connect:
 	sudo /opt/azurespheresdk/Tools/azsphere_connect.sh
@@ -55,6 +58,10 @@ model: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
 convolution: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c
 
 # build image package
+image:
+	@mkdir -p $(build_dir)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
+
 $(build_dir)/hello_imagepackage:
 	@mkdir -p $(@D)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
