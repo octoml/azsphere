@@ -12,11 +12,11 @@ OPTION(CONV2D "Is this conv2d?" OFF)
 OPTION(CONV2D_NET "Is this conv2d network?" OFF)
 OPTION(DEMO "Is this demo?" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
-OPTION(KEYWORD "Is this keyword model?" ON)
+OPTION(KEYWORD "Is this keyword model?" OFF)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
 OPTION(HELLO "Is this hello world?" OFF)
 OPTION(INTERCOMM "Is this intercore communication?" OFF)
-OPTION(DEMO1 "TVM, Intercore connection" OFF)
+OPTION(DEMO1 "TVM, Intercore connection of preprocessing" ON)
 
 #3rdparty
 SET(ML_KWS 3rdparty/ML_KWS/Deployment)

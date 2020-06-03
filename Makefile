@@ -62,6 +62,10 @@ image:
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
 
+demo1: $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin 
+	@mkdir -p $(build_dir)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
 $(build_dir)/hello_imagepackage:
 	@mkdir -p $(@D)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
