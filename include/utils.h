@@ -2,6 +2,8 @@
 #define AS_UTILS_H_
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <applibs/storage.h>
 
 #define DEBUG_MESSAGE_MAX_LENGTH  128
 static int DEBUG_SOCKET = -1;
