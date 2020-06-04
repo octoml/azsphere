@@ -168,36 +168,39 @@ int main(void)
     // Continue if interrupted by signal, e.g. due to breakpoint being set.
 
     if (InterCoreRXFlag) {
-      // float* input_storage;
-      // float* tvmOutput = (float *)malloc(out_dim0 * out_dim1 * sizeof(float));;
-      // Read_File_Float(data_file, &input_storage);
-      // TVMCallback(tvm_handle, input_storage, tvmOutput);
-
-      // Read expected output
-      // float* exp_out;
-      // Read_File_Float(output_file, &exp_out);
-
-      // bool result = true;
-      // int output_size = out_dim0 * out_dim1;
-      // for (int i = 0; i < output_size; ++i) {
-      //   if (fabs(tvmOutput[i] - exp_out[i]) >= 1e-3f) {
-      //     result = false;
-      //     #if AS_DEBUG
-      //     fprintf(stdout, "got %f, expected %f\n", tvmOutput[i], exp_out[i]);
-      //     #endif  /* AS_DEBUG */
-      //     break;
-      //   }
-      // }
-      // int index = TVMMaxIndex(tvmOutput);
-      // fprintf(stdout, "label: %s\n", labels[index]);
-      // LED_Set(index);
       InterCoreRXFlag = false;
       Log_Debug("RX: ");
       for(int i=0; i<490; i++){
         Log_Debug("%d, ", InterCoreRXBuff[i]);
       }
+      float* input_storage = (float *)malloc(in_dim0*in_dim1*in_dim2*sizeof(float));
+      float* tvmOutput = (float *)malloc(out_dim0 * out_dim1 * sizeof(float));
+      for (int i=0; i<InterCoreRXBuffSize; i++) {
+        input_storage[i] = (float)InterCoreRXBuff[i];
+      }
+      // Read_File_Float(data_file, &input_storage);
+      TVMCallback(tvm_handle, input_storage, tvmOutput);
 
-      Log_Debug("Intercore inside\n");
+      // Read expected output
+      float* exp_out;
+      Read_File_Float(output_file, &exp_out);
+
+      bool result = true;
+      int output_size = out_dim0 * out_dim1;
+      for (int i = 0; i < output_size; ++i) {
+        if (fabs(tvmOutput[i] - exp_out[i]) >= 1e-3f) {
+          result = false;
+          #if AS_DEBUG
+          fprintf(stdout, "got %f, expected %f\n", tvmOutput[i], exp_out[i]);
+          #endif  /* AS_DEBUG */
+          break;
+        }
+      }
+      int index = TVMMaxIndex(tvmOutput);
+      Log_Debug(stdout, "label: %s\n", labels[index]);
+      // LED_Set(index);
+
+      // Log_Debug("Intercore inside\n");
     }
 
     if (result == EventLoop_Run_Failed && errno != EINTR) {
