@@ -102,34 +102,6 @@ def build_conv2d_module(opts):
     with open(os.path.join(build_dir, "conv2d_output.bin"), "wb") as fp:
         fp.write(tvm_out.astype(np.float32).tobytes())
 
-def build_module(opts):
-    dshape = (1, 3, 224, 224)
-    from mxnet.gluon.model_zoo.vision import get_model
-    block = get_model('mobilenet0.25', pretrained=True)
-    shape_dict = {'data': dshape}
-    mod, params = relay.frontend.from_mxnet(block, shape_dict)
-    
-    # quanitization
-    if (opts.quantize):
-        mod = quantize(mod, params, data_aware=False)
-
-    func = mod["main"]
-    func = relay.Function(func.params, relay.nn.softmax(func.body), None, func.type_params, func.attrs)
-
-    with relay.build_config(opt_level=3):
-        graph, lib, params = relay.build(
-            func, target=TARGET, params=params)
-
-    build_dir = os.path.abspath(opts.out_dir)
-    if not os.path.isdir(build_dir):
-        os.makedirs(build_dir)
-
-    lib.save(os.path.join(build_dir, 'model.o'))
-    with open(os.path.join(build_dir, 'graph.json'), 'w') as f_graph_json:
-        f_graph_json.write(graph)
-    with open(os.path.join(build_dir, 'params.bin'), 'wb') as f_params:
-        f_params.write(relay.save_param_dict(params))
-
 def build_cifar(opts, model_name):
     from tuning.model.cifar10_relay import get_cifar_relay
     from tuning.model.cifar10_arm import get_cifar_keras, gen_custom_cifar_keras
@@ -640,10 +612,6 @@ if __name__ == '__main__':
         # build_cifar(opts, model_name='cifar-10-relay')
     elif opts.keyword:
         build_keyword_model(opts)
-    # else:
-        #TODO: fix this. this should be another argument and then uncomment it
-        # build_module(opts)
-        # build_inputs(opts)
 
     if opts.id:
         generate_id()

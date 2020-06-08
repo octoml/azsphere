@@ -89,10 +89,6 @@ demo1: $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/
 $(build_dir)/hello_imagepackage:
 	@mkdir -p $(@D)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
-	
-$(build_dir)/demo_imagepackage: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
 $(build_dir)/cifar_imagepackage: $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_graph.json.c $(build_dir)/cifar_params.bin 
 	@mkdir -p $(@D)
@@ -152,9 +148,6 @@ $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_param
 	python3 $< -o $(build_dir) --cifar
 	# --tuned
 	# --quantize
-
-$(build_dir)/model.o $(build_dir)/graph.json $(build_dir)/params.bin $(build_dir)/cat.bin: build_model.py
-	python3 $< -o $(build_dir) --quantize
 
 $(build_dir)/id.bin: python/build_model.py
 	python3 $< -o $(build_dir) --id
