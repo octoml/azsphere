@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
   Read_File_Float(output_file, &exp_out);
 
   bool result = true;
-  for (auto i = 0; i < (out_dim0*out_dim1*out_dim2*out_dim3); ++i) {
+  for (int i = 0; i < (out_dim0*out_dim1*out_dim2*out_dim3); ++i) {
     assert(fabs(output_storage[i] - exp_out[i]) < 1e-5f);
     if (fabs(output_storage[i] - exp_out[i]) >= 1e-5f) {
       result = false;

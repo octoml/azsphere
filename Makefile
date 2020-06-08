@@ -18,7 +18,9 @@ copy:
 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin build/
 	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin build/
 
+############################################################################
 #azure sphere commands
+############################################################################
 program:
 	azsphere device sideload deploy --imagepackage $(build_dir)/azsphere_tvm.imagepackage
 
@@ -54,12 +56,23 @@ install_ethernet:
 remove_ethernet:
 	azsphere device sideload delete --componentID 1cf5f2f3-19a8-4782-9330-3ab046b95e89
 
-
+############################################################################
 # build imagepackage
+############################################################################
 test: $(build_dir)/test_model.o
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
+conv2d: $(build_dir)/conv2d_model.o
+	@mkdir -p $(build_dir)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
+conv2d_network: $(build_dir)/conv2d_model.o $(build_dir)/id.bin
+	@mkdir -p $(build_dir)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
+
+#####
 model: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
 
 convolution: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c
@@ -101,10 +114,6 @@ $(build_dir)/conv2d_net_imagepackage: $(build_dir)/conv2d_model.o $(build_dir)/c
 	@mkdir -p $(@D)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
-$(build_dir)/conv2d_imagepackage: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
-
 
 
 # Serialize graph.json file.
@@ -131,12 +140,15 @@ $(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
 $(build_dir)/test_model.o: python/build_model.py
 	python3 $< -o $(build_dir) --test
 
+$(build_dir)/conv2d_model.o: python/build_model.py
+	python3 $< -o $(build_dir) --conv2d
+
 $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin $(build_dir)/keyword_data.bin $(build_dir)/keyword_output.bin: build_model.py
 	python3 $< -o $(build_dir) --keyword --footprint
 	# --tuned
 	# --footprint
 
-$(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_params.bin $(build_dir)/cifar_data.bin $(build_dir)/cifar_output.bin $(build_dir)/id.bin: build_model.py
+$(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_params.bin $(build_dir)/cifar_data.bin $(build_dir)/cifar_output.bin: build_model.py
 	python3 $< -o $(build_dir) --cifar
 	# --tuned
 	# --quantize
@@ -144,17 +156,8 @@ $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_param
 $(build_dir)/model.o $(build_dir)/graph.json $(build_dir)/params.bin $(build_dir)/cat.bin: build_model.py
 	python3 $< -o $(build_dir) --quantize
 
-# $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json $(build_dir)/conv2d_params.bin $(build_dir)/conv2d_data.bin: build_model.py
-# 	python3 $< -o $(build_dir) --conv2d
-
-$(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.bin $(build_dir)/conv2d_params.bin $(build_dir)/conv2d_data.bin:
-	mkdir -p $(build_dir)
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_model.o $(build_dir)
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_graph.bin $(build_dir)
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_params.bin $(build_dir)
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_data.bin $(build_dir)
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin $(build_dir)
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin $(build_dir)
+$(build_dir)/id.bin: python/build_model.py
+	python3 $< -o $(build_dir) --id
 
 clean:
 	rm -rf $(build_dir)

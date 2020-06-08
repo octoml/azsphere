@@ -582,6 +582,7 @@ if __name__ == '__main__':
     parser.add_argument('--tuned', action='store_true')
     parser.add_argument('--footprint', action='store_true')
     parser.add_argument('--multi', action='store_true')
+    parser.add_argument('--id', action='store_true')
     opts = parser.parse_args()
     
     build_dir = os.path.abspath(opts.out_dir)
@@ -639,6 +640,10 @@ if __name__ == '__main__':
         # build_cifar(opts, model_name='cifar-10-relay')
     elif opts.keyword:
         build_keyword_model(opts)
-    else:
-        build_module(opts)
-        build_inputs(opts)
+    # else:
+        #TODO: fix this. this should be another argument and then uncomment it
+        # build_module(opts)
+        # build_inputs(opts)
+
+    if opts.id:
+        generate_id()

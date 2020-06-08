@@ -5,8 +5,8 @@ azsphere_configure_api(TARGET_API_SET "5+Beta2004")
 
 # Set mode here
 OPTION(TEST "TVM a+b test" OFF)
-OPTION(CONV2D "TVM Relay conv2d test" ON)
-OPTION(CONV2D_NET "Is this conv2d network?" OFF)
+OPTION(CONV2D "TVM Relay conv2d test" OFF)
+OPTION(CONV2D_NET "TVM Relay conv2d test with network azure sphere network setup" ON)
 OPTION(DEMO "Is this demo?" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
 OPTION(KEYWORD "Is this keyword model?" OFF)
@@ -28,8 +28,8 @@ elseif(CONV2D)
               src/bundle_static.c src/utils.c)
   SET(OBJS build/conv2d_model.o)
 elseif(CONV2D_NET)
-  message("INFO: Building Conv2d Network!")
-  SET(CFILES conv2d_network.c bundle_static.c)
+  SET(CFILES  conv2d_network.c
+              src/bundle_static.c src/utils.c)
   SET(OBJS build/conv2d_model.o)
 elseif(DEMO)
   message("INFO: Building demo!")
@@ -111,7 +111,11 @@ elseif(CONV2D)
       "build/conv2d_data.bin" "build/conv2d_output.bin" "build/conv2d_graph.json" "build/conv2d_params.bin"
   )
 elseif(CONV2D_NET)
-  SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin;build/id.bin")
+  azsphere_target_add_image_package(
+  ${PROJECT_NAME} RESOURCE_FILES
+    "build/conv2d_data.bin" "build/conv2d_output.bin" "build/conv2d_graph.json" "build/conv2d_params.bin"
+    "build/id.bin"
+  )
 elseif(DEMO)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/cat.bin")
 elseif(CIFAR)
