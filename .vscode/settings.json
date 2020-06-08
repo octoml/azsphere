@@ -34,7 +34,10 @@
         "cstdio": "c",
         "string.h": "c",
         "errno.h": "c",
-        "kws_ds_cnn.h": "c"
+        "config.h": "c"
     },
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.detectIndentation": true
 }

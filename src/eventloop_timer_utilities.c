@@ -12,7 +12,7 @@
 #include <applibs/log.h>
 #include <applibs/eventloop.h>
 
-#include "eventloop_timer_utilities.h"
+#include "include/eventloop_timer_utilities.h"
 
 static int SetTimerPeriod(int timerFd, const struct timespec *initial,
                           const struct timespec *repeat);
