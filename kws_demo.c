@@ -14,8 +14,6 @@
 #include <applibs/application.h>
 
 #include "include/eventloop_timer_utilities.h"
-
-#include <tvm/runtime/c_runtime_api.h>
 #include "include/config.h"
 #include "include/intercore.h"
 #include "include/exitcode.h"
@@ -27,20 +25,17 @@
 #endif
 
 #define rtAppComponentId "18b8807b-541b-4953-8c9f-9135eedcc376"
-#define id_file       "build/id.bin"
 #define param_file    "build/keyword_params.bin"
 #define graph_file    "build/keyword_graph.bin"
-#define data_file     "build/keyword_data.bin"
-#define output_file   "build/keyword_output.bin"
 
 static int sockFd = -1;
 static EventLoop *eventLoop = NULL;
 static EventLoopTimer *sendTimer = NULL;
 static EventRegistration *socketEventReg = NULL;
-// static volatile sig_atomic_t exitCode = ExitCode_Success;
 static ExitCode exitCode = ExitCode_Success;
-int8_t InterCoreRXBuff[InterCoreRXBuffSize];
-volatile bool InterCoreRXFlag;
+float InterCoreRXBuff[InterCoreRXBuffSize];
+volatile uint32_t InterCoreRXIndex;
+volatile int intercore_counter;
 int* tvm_handle;
 static char * labels [12] = {"silence", "unknown", "yes", "no", "up", "down",
                           "left", "right", "on", "off", "stop", "go"};
@@ -50,9 +45,6 @@ static int led2[3];
 static int led3[3];
 static int led4[3];
 
-// static void TerminationHandler(int signalNumber);
-// static void SendTimerEventHandler(EventLoopTimer *timer);
-// static void CloseHandlers(void);
 static ExitCode GPIO_Init();
 static int LED_Set(uint8_t label);
 
@@ -67,7 +59,7 @@ static ExitCode GPIO_Init() {
   for(int ii=0; ii<4; ii++){
     if ((led1[ii] < 0) || (led2[ii] < 0) || (led3[ii] < 0) || (led4[ii] < 0)){
       #if AS_DEBUG
-      Log_Debug(
+      fprintf(stdout,
       "Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
       strerror(errno), errno);
       #endif
@@ -81,43 +73,43 @@ static int LED_Set(uint8_t label) {
   uint8_t *leds;
   switch (label)
   {
-  case 0: //silence
-    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  case 0: //silence, off, off, off, blue
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
     break;
-  case 1: //unknown
-    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  case 1: //unknown => off, off, off, green
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
     break;
-  case 2: //yes
-    leds = (uint8_t[12]){0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0};
+  case 2: //yes => off, off, green, green
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0};
     break;
-  case 3: //no
-    leds = (uint8_t[12]){1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0};
+  case 3: //no => off, off, red, red
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0};
     break;
-  case 4: //up
-    leds = (uint8_t[12]){0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0};
+  case 4: //up => off, off, green, off
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0};
     break;
-  case 5: //down
-    leds = (uint8_t[12]){0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0};
+  case 5: //down => off, off, blue, off
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0};
     break;
-  case 6: //left
-    leds = (uint8_t[12]){1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
+  case 6: //left => rgb, off, off, off
+    leds = (uint8_t[12]){1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     break;
-  case 7: //right
-    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1};
+  case 7: //right => off, off, off, rgb
+    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1};
     break;
-  case 8: //on
-    leds = (uint8_t[12]){1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  case 8: //on => rgb, off, rgb, rgb
+    leds = (uint8_t[12]){1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1};
     break;
-  case 9: //off
-    leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  case 9: //off => red, off, off, off
+    leds = (uint8_t[12]){1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     break;
-  case 10: //stop
-    leds = (uint8_t[12]){1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0};
+  case 10: //stop => red, off, red, red
+    leds = (uint8_t[12]){1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0};
     break;
-  case 11: //go
-    leds = (uint8_t[12]){0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0};
+  case 11: //go => green, off, green, green
+    leds = (uint8_t[12]){0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0};
     break;
-  default:
+  default: //=> off, off, off, off
     leds = (uint8_t[12]){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     break;
   }
@@ -141,6 +133,7 @@ static int LED_Set(uint8_t label) {
 
 static ExitCode App_Init() {
   GPIO_Init();
+  LED_Set(20);
   ExitCode tmp = ExitCode_Success;
   eventLoop = EventLoop_Create();
   if (eventLoop == NULL) {
@@ -149,7 +142,7 @@ static ExitCode App_Init() {
   }
 
   tmp = InterCoreInit(eventLoop, socketEventReg, sockFd, rtAppComponentId);
-  InterCoreRXFlag = false;
+  InterCoreRXIndex = 0;
 
   tvm_handle = TVMInit(param_file, graph_file);
   if (tvm_handle < 0) {
@@ -165,52 +158,31 @@ int main(void)
 
   while (exitCode == ExitCode_Success) {
     EventLoop_Run_Result result = EventLoop_Run(eventLoop, -1, true);
-    // Continue if interrupted by signal, e.g. due to breakpoint being set.
-
-    if (InterCoreRXFlag) {
-      InterCoreRXFlag = false;
-      Log_Debug("RX: ");
-      for(int i=0; i<490; i++){
-        Log_Debug("%d, ", InterCoreRXBuff[i]);
+    if (InterCoreRXIndex >= (InterCoreRXBuffSize*sizeof(float))) {
+      InterCoreRXIndex = 0;
+      intercore_counter = 0;
+      #if AS_DEBUG
+      fprintf(stdout, "intercore_counter: %d\n", intercore_counter);
+      fprintf(stdout, "RX: ");
+      for(int i=0; i<InterCoreRXBuffSize; i++){
+        fprintf(stdout, "%d, ", InterCoreRXBuff[i]);
       }
-      float* input_storage = (float *)malloc(in_dim0*in_dim1*in_dim2*sizeof(float));
+      #endif
+
       float* tvmOutput = (float *)malloc(out_dim0 * out_dim1 * sizeof(float));
-      for (int i=0; i<InterCoreRXBuffSize; i++) {
-        input_storage[i] = (float)InterCoreRXBuff[i];
-      }
-      // Read_File_Float(data_file, &input_storage);
-      TVMCallback(tvm_handle, input_storage, tvmOutput);
+      TVMCallback(tvm_handle, &InterCoreRXBuff, tvmOutput);
 
-      // Read expected output
-      float* exp_out;
-      Read_File_Float(output_file, &exp_out);
-
-      bool result = true;
-      int output_size = out_dim0 * out_dim1;
-      for (int i = 0; i < output_size; ++i) {
-        if (fabs(tvmOutput[i] - exp_out[i]) >= 1e-3f) {
-          result = false;
-          #if AS_DEBUG
-          fprintf(stdout, "got %f, expected %f\n", tvmOutput[i], exp_out[i]);
-          #endif  /* AS_DEBUG */
-          break;
-        }
-      }
       int index = TVMMaxIndex(tvmOutput);
-      Log_Debug(stdout, "label: %s\n", labels[index]);
-      // LED_Set(index);
-
-      // Log_Debug("Intercore inside\n");
+      #if AS_DEBUG
+      fprintf(stdout, "label: %s\n", labels[index]);
+      #endif
+      LED_Set(index);
     }
 
     if (result == EventLoop_Run_Failed && errno != EINTR) {
         exitCode = ExitCode_Main_EventLoopFail;
     }
   }
-
-  // CloseHandlers();
-  // while(1){
-  //   ;;
-  // }
+  
   return exitCode;
 }

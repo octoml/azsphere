@@ -67,10 +67,9 @@ keyword: $(build_dir)/keyword_model.o
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
-demo1: $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin 
+kws_demo: $(build_dir)/keyword_model.o
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
-
 ############################################################################
 # build model
 ############################################################################

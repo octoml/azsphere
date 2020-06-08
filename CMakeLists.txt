@@ -8,9 +8,8 @@ OPTION(TEST "TVM a+b test" OFF)
 OPTION(CONV2D "TVM Relay conv2d test" OFF)
 OPTION(CONV2D_NET "TVM Relay conv2d test with network azure sphere network setup" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
-OPTION(KEYWORD "TVM Relay Keyword Spotting model" ON)
-OPTION(INTERCOMM "Is this intercore communication?" OFF)
-OPTION(DEMO1 "TVM, Intercore connection of preprocessing" OFF)
+OPTION(KEYWORD "TVM Relay Keyword Spotting model" OFF)
+OPTION(DEMO1 "KWS TVM Demo" ON)
 
 if(TEST)
   SET(CFILES  test.c
@@ -33,12 +32,8 @@ elseif(KEYWORD)
               src/bundle_static.c src/utils.c
   )
   SET(OBJS build/keyword_model.o)
-elseif(INTERCOMM)
-  SET(CFILES  intercomm.c
-              src/eventloop_timer_utilities.c
-  )
 elseif(DEMO1)
-  SET(CFILES  demo1.c 
+  SET(CFILES  kws_demo.c 
               src/bundle_static.c
               src/utils.c src/eventloop_timer_utilities.c
               src/intercore.c src/tvmruntime.c

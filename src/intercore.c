@@ -2,16 +2,15 @@
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
-
 #include <sys/socket.h>
 
 #include <applibs/eventloop.h>
 #include <applibs/application.h>
+#include <applibs/log.h>
 
 #include "include/intercore.h"
 #include "include/exitcode.h"
 #include "include/config.h"
-// #include "eventloop_timer_utilities.h"
 
 ExitCode InterCoreInit(EventLoop* event_loop, EventRegistration* socket_event_reg, 
                         int app_socket, const char* rtAppCompID)
@@ -36,17 +35,17 @@ ExitCode InterCoreInit(EventLoop* event_loop, EventRegistration* socket_event_re
 
 ExitCode InterCoreSocketEventHandler(EventLoop* el, int fd, EventLoop_IoEvents events, void* context)
 {
-  // Read message from real-time capable application.
-  // If the RTApp has sent more than 32 bytes, then truncate.
-  int bytesReceived = recv(fd, InterCoreRXBuff, sizeof(InterCoreRXBuff), 0);
+  char* data = (char *)InterCoreRXBuff;
+  int bytesReceived = recv(fd, (data + InterCoreRXIndex), InterCoreChunkSize, 0);
 
   if (bytesReceived == -1) {
     fprintf(stdout, "ERROR: Unable to receive message: %d (%s)\n", errno, strerror(errno));
     return ExitCode_SocketHandler_Recv;
   }
-  InterCoreRXFlag = true;
+  InterCoreRXIndex += bytesReceived;
+  intercore_counter += 1;
   
-  fprintf(stdout, "Received %d bytes: ", bytesReceived);
+  Log_Debug("Received %d bytes: ", bytesReceived);
   return ExitCode_Success;
 }
 
