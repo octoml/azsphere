@@ -1,9 +1,10 @@
 #ifndef AS_NETWORK_H_
 #define AS_NETWORK_H_
 
-#include <applibs/networking.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 
+#include <applibs/networking.h>
 #include "exitcode.h"
 
 
