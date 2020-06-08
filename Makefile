@@ -6,18 +6,6 @@ CMAKE_FLAGS = -G "Ninja" \
 
 build_dir := build
 
-copy_dir := schedule_0000
-task_dir := task_0002
-
-copy:
-	@mkdir -p ${build_dir}
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_model.o build/
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_graph.bin build/
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_params.bin build/
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_data.bin build/
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin build/
-	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin build/
-
 ############################################################################
 #azure sphere commands
 ############################################################################
@@ -79,25 +67,13 @@ keyword: $(build_dir)/keyword_model.o
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
-#####
-model: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
-
-convolution: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c
-
-# build image package
-image:
-	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
-
 demo1: $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin 
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
-$(build_dir)/hello_imagepackage:
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
-
+############################################################################
 # build model
+############################################################################
 $(build_dir)/test_model.o: python/build_model.py
 	python3 $< -o $(build_dir) --test
 

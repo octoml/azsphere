@@ -9,13 +9,8 @@ OPTION(CONV2D "TVM Relay conv2d test" OFF)
 OPTION(CONV2D_NET "TVM Relay conv2d test with network azure sphere network setup" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
 OPTION(KEYWORD "TVM Relay Keyword Spotting model" ON)
-OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
 OPTION(INTERCOMM "Is this intercore communication?" OFF)
 OPTION(DEMO1 "TVM, Intercore connection of preprocessing" OFF)
-
-#3rdparty directories
-SET(ML_KWS 3rdparty/ML_KWS/Deployment)
-SET(CMSIS 3rdparty/CMSIS_5/CMSIS)
 
 if(TEST)
   SET(CFILES  test.c
@@ -38,10 +33,6 @@ elseif(KEYWORD)
               src/bundle_static.c src/utils.c
   )
   SET(OBJS build/keyword_model.o)
-elseif(KEYWORD_DEMO)
-  message("INFO: Building KEYWORD demo!")
-  SET(CFILES keyword_demo_feature.c bundle_static.c)
-  SET(OBJS build/keyword_model.o)
 elseif(INTERCOMM)
   SET(CFILES  intercomm.c
               src/eventloop_timer_utilities.c
@@ -54,42 +45,24 @@ elseif(DEMO1)
   )
   SET(OBJS build/keyword_model.o)
 else()
-  SET(CFILES mfcc_test.cpp 
-      src/example.cpp src/kws.cpp
-      ${ML_KWS}/Source/MFCC/mfcc.cpp
-      ${CMSIS}/DSP/Source/TransformFunctions/arm_rfft_fast_f32.c
-      ${CMSIS}/DSP/Source/TransformFunctions/arm_cfft_f32.c
-      ${CMSIS}/DSP/Source/TransformFunctions/arm_cfft_radix8_f32.c
-      ${CMSIS}/DSP/Source/TransformFunctions/arm_rfft_fast_init_f32.c
-      ${CMSIS}/DSP/Source/TransformFunctions/arm_cfft_init_f32.c
-      ${CMSIS}/DSP/Source/CommonTables/arm_common_tables.c
-      ${CMSIS}/DSP/Source/CommonTables/arm_const_structs.c
-      ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S
-  )
-  set_property(SOURCE ${CMSIS}/DSP/Source/TransformFunctions/arm_bitreversal2.S PROPERTY LANGUAGE C)
 endif()
 
 # Create executable
 ADD_EXECUTABLE(${PROJECT_NAME} ${CFILES} ${OBJS})
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} applibs pthread gcc_s c)
 
-# Add TVM headers
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/include)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/src)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dmlc-core/include)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ~/tvm/3rdparty/dlpack/include)
+# 3rdparty libraries
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC $ENV{TVM_HOME}/include)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC $ENV{TVM_HOME}/src)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC $ENV{TVM_HOME}/3rdparty/dmlc-core/include)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC $ENV{TVM_HOME}/3rdparty/dlpack/include)
 # Project Headers
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR})
-# 3rdparty libraries
-#TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Source/MFCC)
-#TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${ML_KWS}/Examples/simple_test)
-#TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMSIS}/DSP/Include)
-#TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMSIS}/Core/Include)
+
 
 azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "Hardware/mt3620_rdb" TARGET_DEFINITION "my_hardware.json")
 
 # Add MakeImage post-build command
-# Note: No space between multiple file names
 if(TEST)
   azsphere_target_add_image_package(
     ${PROJECT_NAME} RESOURCE_FILES
@@ -108,7 +81,7 @@ elseif(CONV2D_NET)
   )
 elseif(CIFAR)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/cifar_data.bin;build/cifar_output.bin;build/cifar_params.bin;build/cifar_graph.bin;build/id.bin")
-elseif(KEYWORD OR KEYWORD_DEMO OR DEMO1)
+elseif(KEYWORD)
   azsphere_target_add_image_package(
     ${PROJECT_NAME}
     RESOURCE_FILES
@@ -117,6 +90,13 @@ elseif(KEYWORD OR KEYWORD_DEMO OR DEMO1)
         "build/keyword_params.bin"
         "build/keyword_graph.bin"
         "build/id.bin"
+    )
+elseif(DEMO1)
+  azsphere_target_add_image_package(
+    ${PROJECT_NAME}
+    RESOURCE_FILES
+        "build/keyword_params.bin"
+        "build/keyword_graph.bin"
     )
 else()
   azsphere_target_add_image_package(
