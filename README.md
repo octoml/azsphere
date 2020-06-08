@@ -1,22 +1,30 @@
-# TVM on Azure Sphere Platform
+## Overview
+We show machine learning model deployment on [MT3620 Azure Sphere](https://azure.microsoft.com/en-us/services/azure-sphere/get-started/) using [Apache TVM](https://tvm.apache.org/). We show multiple deployments from a simple ```a+b``` example to a ```Conv2D``` operationa and finally we deploy [Keyword Spotting](https://github.com/ARM-software/ML-KWS-for-MCU) model developed by ARM.
 
-## Azure Sphere Files
-| File/folder | Description |
-|-------------|-------------|
-|   main.c    | Source file. |
-| app_manifest.json |Manifest file. |
-| CMakeLists.txt | Contains the project information and produces the build. |
-| CMakeSettings.json| Configures Visual Studio to use CMake with the correct command-line options. |
-|launch.vs.json |Tells Visual Studio how to deploy and debug the application.|
-|.vscode |Contains settings.json that configures Visual Studio Code to use CMake with the correct options, and tells it how to deploy and debug the application. |
+## Hardware Requirements
+- Linux machine
+- [MT3620 Azure Sphere board](https://www.seeedstudio.com/Azure-Sphere-MT3620-Development-Kit-US-Version-p-3052.html)
+- micro USB cable
+- [MT3620 Ethernet Shield](https://www.seeedstudio.com/MT3620-Ethernet-Shield-v1-0-p-2917.html)(only for tuning)
 
-## Prerequisites
+## Software Requirements
+- Linux with Azure Sphere SDK (follow [Azure Sphere documentation](https://docs.microsoft.com/en-us/azure-sphere/) to setup SDK and device)
+- Python 3.6+
+- Tensorflow
 
-The sample requires the following hardware:
+## Getting Started
+1. Clone this repository
+2. [Install TVM](https://docs.tvm.ai/install/from_source.html)
+   - **NOTE:** Ensure you enable LLVM by setting ```set(USE_LLVM ON)```. (This repository has been tested against LLVM-10)
+   - **NOTE:** Checkout ```f5b02fdb1b5a7b6be79df97035ec1c3b80e3c665``` before installation.
+3. Setup virtualenv
+```bash
+$ python3 -mvenv _venv
+$ . _venv/bin/activate
+$ pip3 install -r requirements.txt -c constraints.txt
+$ export PYTHONPATH=$(pwd)/python:$PYTHONPATH
+```
 
-1. [Seeed MT3620 Development Kit](https://aka.ms/azurespheredevkits) or other hardware that implements the [MT3620 Reference Development Board (RDB)](https://docs.microsoft.com/azure-sphere/hardware/mt3620-reference-board-design) design.
-
-**Note:** By default, this sample targets [MT3620 reference development board (RDB)](https://docs.microsoft.com/azure-sphere/hardware/mt3620-reference-board-design) hardware, such as the MT3620 development kit from Seeed Studio. To build the sample for different Azure Sphere hardware, change the Target Hardware Definition Directory in the project properties. For detailed instructions, see the [README file in the Hardware folder](./Hardware/README.md).
 
 ## Prepare the environment
 
