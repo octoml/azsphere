@@ -1,9 +1,9 @@
 {
   "SchemaVersion": 1,
-  "Name": "octoml_AS",
+  "Name": "azsphere_tvm",
   "ComponentId": "1689d8b2-c835-2e27-27ad-e894d6d15fa9",
   "EntryPoint": "/bin/app",
-  "CmdArgs": ["arg[1]", "arg[2]"],
+  "CmdArgs": [ ],
   "Capabilities": {
     "Gpio": [ "$LED1r", "$LED1g", "$LED1b", "$LED2g","$LED2b", "$LED3r", "$LED3g", "$LED3b", "$LED4r", "$LED4g", "$LED4b" ],
     "AllowedTcpServerPorts": [ 11000 ],

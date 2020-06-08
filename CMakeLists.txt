@@ -8,9 +8,8 @@ OPTION(TEST "TVM a+b test" OFF)
 OPTION(CONV2D "TVM Relay conv2d test" OFF)
 OPTION(CONV2D_NET "TVM Relay conv2d test with network azure sphere network setup" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
-OPTION(KEYWORD "Is this keyword model?" OFF)
+OPTION(KEYWORD "TVM Relay Keyword Spotting model" ON)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
-OPTION(HELLO "Is this hello world?" OFF)
 OPTION(INTERCOMM "Is this intercore communication?" OFF)
 OPTION(DEMO1 "TVM, Intercore connection of preprocessing" OFF)
 
@@ -35,8 +34,7 @@ elseif(CIFAR)
   SET(CFILES demo_cifar.c bundle_static.c)
   SET(OBJS build/cifar_model.o)
 elseif(KEYWORD)
-  message("INFO: Building KEYWORD test!")
-  SET(CFILES  keyword_test.c
+  SET(CFILES  kws_test.c
               src/bundle_static.c src/utils.c
   )
   SET(OBJS build/keyword_model.o)
@@ -44,8 +42,6 @@ elseif(KEYWORD_DEMO)
   message("INFO: Building KEYWORD demo!")
   SET(CFILES keyword_demo_feature.c bundle_static.c)
   SET(OBJS build/keyword_model.o)
-elseif(HELLO)
-  SET(CFILES hello.c)
 elseif(INTERCOMM)
   SET(CFILES  intercomm.c
               src/eventloop_timer_utilities.c
@@ -58,7 +54,6 @@ elseif(DEMO1)
   )
   SET(OBJS build/keyword_model.o)
 else()
-  message("INFO: Hello test!")
   SET(CFILES mfcc_test.cpp 
       src/example.cpp src/kws.cpp
       ${ML_KWS}/Source/MFCC/mfcc.cpp
@@ -111,8 +106,6 @@ elseif(CONV2D_NET)
     "build/conv2d_data.bin" "build/conv2d_output.bin" "build/conv2d_graph.json" "build/conv2d_params.bin"
     "build/id.bin"
   )
-elseif(DEMO)
-  SET(ADDITIONAL_APPROOT_INCLUDES "build/cat.bin")
 elseif(CIFAR)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/cifar_data.bin;build/cifar_output.bin;build/cifar_params.bin;build/cifar_graph.bin;build/id.bin")
 elseif(KEYWORD OR KEYWORD_DEMO OR DEMO1)
@@ -123,7 +116,8 @@ elseif(KEYWORD OR KEYWORD_DEMO OR DEMO1)
         "build/keyword_output.bin"
         "build/keyword_params.bin"
         "build/keyword_graph.bin"
-        "build/id.bin")
+        "build/id.bin"
+    )
 else()
   azsphere_target_add_image_package(
     ${PROJECT_NAME})

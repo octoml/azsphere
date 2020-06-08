@@ -13,7 +13,7 @@
 #include <math.h>
 #include <float.h>
 
-#include <tvm/runtime/c_runtime_api.h>
+// #include <tvm/runtime/c_runtime_api.h>
 #include "include/config.h"
 #include "include/bundle.h"
 #include "include/utils.h"
@@ -23,11 +23,9 @@
 #include "network.h"
 #endif
 
-// Convolution
 #define in_dim0     1
 #define in_dim1     49
 #define in_dim2     10
-
 #define out_dim0    1
 #define out_dim1    12
 
@@ -45,25 +43,22 @@ static ExitCode exitCode = ExitCode_Success;
 static uint16_t id;
 
 int main(int argc, char **argv) {
-  #if AS_DEBUG
-  Log_Debug("Starting TVM Keyword demo...\n");
-  #endif  /* AS_DEBUG */
+  Log_Debug("TVM Keyword Spotting model...\n");
+
+  int fd = GPIO_OpenAsOutput(LED1[0], GPIO_OutputMode_PushPull, GPIO_Value_High);
+  if (fd < 0) {
+    #if AS_DEBUG
+    fprintf(stdout,
+      "Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
+      strerror(errno), errno);
+    #endif
+    goto failed;
+  }
 
   struct timeval t0, t1, t2, t3, t4, t5;
   float duration;
 
   gettimeofday(&t0, 0);
-
-  int fd = GPIO_OpenAsOutput(LED1[0], GPIO_OutputMode_PushPull, GPIO_Value_High);
-  if (fd < 0) {
-    #if AS_DEBUG
-    Log_Debug(
-        "Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
-        strerror(errno), errno);
-    #endif  /* AS_DEBUG */
-    return ExitCode_Main_Led;
-  }
-  GPIO_SetValue(fd, GPIO_Value_High);
 
   #if AS_NETWORKING
   exitCode = NetworkEnable(interface);
@@ -97,7 +92,6 @@ int main(int argc, char **argv) {
   auto *handle = tvm_runtime_create(graph_data, params_data, params_size);
   gettimeofday(&t1, 0);
 
-  //graph and params not required anymore
   free(graph_data);
   free(params_data);
 
@@ -130,7 +124,6 @@ int main(int argc, char **argv) {
   }
   duration = duration / (float)(NUM_EXP);
 
-  //input not required anymore
   free(input_storage);
 
   float* output_storage = malloc(out_dim0 * out_dim1 * sizeof(float));
@@ -161,9 +154,6 @@ int main(int argc, char **argv) {
   for (int i = 0; i < output_size; ++i) {
     if (fabs(output_storage[i] - exp_out[i]) >= 1e-3f) {
       result = false;
-      #if AS_DEBUG
-      Log_Debug("got %f, expected %f\n", output_storage[i], exp_out[i]);
-      #endif  /* AS_DEBUG */
       break;
     }
   }
@@ -196,13 +186,13 @@ int main(int argc, char **argv) {
   #endif
 
   #if AS_DEBUG
-  Log_Debug("timing: %.2f ms (create), %.2f ms (set_input), %.2f ms (run), "
-         "%.2f ms (get_output), %.2f ms (destroy)\n",
-         (float)(t1.tv_sec-t0.tv_sec)*1000 + (float)(t1.tv_usec-t0.tv_usec)/1000.f,
-         (float)(t2.tv_sec-t1.tv_sec)*1000 + (float)(t2.tv_usec-t1.tv_usec)/1000.f,
-         (float)(t3.tv_sec-t2.tv_sec)*1000 + (float)(t3.tv_usec-t2.tv_usec)/1000.f,
-         (float)(t4.tv_sec-t3.tv_sec)*1000 + (float)(t4.tv_usec-t3.tv_usec)/1000.f,
-         (float)(t5.tv_sec-t4.tv_sec)*1000 + (float)(t5.tv_usec-t4.tv_usec)/1000.f);
+  fprintf(stdout, "timing: %.2f ms (create), %.2f ms (set_input), %.2f ms (run), "
+    "%.2f ms (get_output), %.2f ms (destroy)\n",
+    (float)(t1.tv_sec-t0.tv_sec)*1000 + (float)(t1.tv_usec-t0.tv_usec)/1000.f,
+    (float)(t2.tv_sec-t1.tv_sec)*1000 + (float)(t2.tv_usec-t1.tv_usec)/1000.f,
+    (float)(t3.tv_sec-t2.tv_sec)*1000 + (float)(t3.tv_usec-t2.tv_usec)/1000.f,
+    (float)(t4.tv_sec-t3.tv_sec)*1000 + (float)(t4.tv_usec-t3.tv_usec)/1000.f,
+    (float)(t5.tv_sec-t4.tv_sec)*1000 + (float)(t5.tv_usec-t4.tv_usec)/1000.f);
   #endif  /* AS_DEBUG */
 
   #if AS_NETWORKING
@@ -227,14 +217,13 @@ int main(int argc, char **argv) {
   shutdown(socket, 2);
   #endif
 
-  const struct timespec sleepTime = {.tv_sec = 1, .tv_nsec = 0};
-  while (true) {
-      GPIO_SetValue(fd, GPIO_Value_Low);
-      nanosleep(&sleepTime, NULL);
-      GPIO_SetValue(fd, GPIO_Value_High);
-      nanosleep(&sleepTime, NULL);
+  if (result) {
+    GPIO_SetValue(fd, GPIO_Value_Low);
   }
 
-endApp:
+  for(;;) {}
+
+failed:
+  GPIO_SetValue(fd, GPIO_Value_High);
   return 0;
 }

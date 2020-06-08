@@ -235,33 +235,33 @@ def build_cifar(opts, model_name):
     generate_id()
 
 def build_keyword_model(opts):
-    from tuning.model.keyword_spotting import get_module, prepare_input
+    from models.kws.kws import get_module, prepare_input
 
     model_input_name = 'Mfcc'
     shape_dict = {model_input_name: (1, 49, 10)}
 
-    mod = get_module('tuning/model/keyword_model/module_gs_4.0_conv_notquantized.pickle')
+    mod = get_module('python/models/kws/saved/module_gs_4.0_conv_notquantized.pickle')
     print(mod)
     
     print("Compile...")
     if opts.tuned:
         history_file = 'ks_conv_notquantized_runtime.txt'
         print(f'INFO: Model tuning for runtime with file {history_file}!')
-        with autotvm.apply_history_best(os.path.join('tuning', history_file)):
+        with autotvm.apply_history_best(os.path.join('python/tuning/kws', history_file)):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
                     mod, target=TARGET)
     elif opts.footprint:
         history_file = 'ks_conv_notquantized_footprint.txt'
         print(f'INFO: Model tuning for footprint with file {history_file}!')
-        with autotvm.apply_history_best(os.path.join('tuning', history_file)):
+        with autotvm.apply_history_best(os.path.join('python/tuning/kws', history_file)):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
                     mod, target=TARGET)
     elif opts.multi:
         history_file = 'ks_conv_notquantized_test1.txt'
         print(f'INFO: Model tuning for footprint and runtime with file {history_file}!')
-        with autotvm.apply_history_best(os.path.join('tuning', history_file)):
+        with autotvm.apply_history_best(os.path.join('python/tuning', history_file)):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
                     mod, target=TARGET)
@@ -290,7 +290,7 @@ def build_keyword_model(opts):
     with open('build/graph.log', 'w') as f:
         f.write(str(graph))
 
-    input_data = prepare_input('tuning/model/keyword_model/samples/0_silence.wav')
+    input_data = prepare_input('python/models/kws/samples/silence.wav')
     ctx = tvm.context(local_target, 0)
     m = tvm.contrib.graph_runtime.create(graph_test, lib_test, ctx)
     m.set_input('Mfcc', input_data)
@@ -463,77 +463,6 @@ def tune_tasks(tasks,
     autotvm.record.pick_best(tmp_log_file, log_filename)
     os.remove(tmp_log_file)
 
-def tune_and_evaluate(opts, tuning_opt):
-    # target = tvm.target.create('llvm -device=arm_cpu -target=aarch64-linux-gnu')
-    target = TARGET + ' -device_name=azure-sphere'
-    print(target)
-    # extract workloads from relay program
-    print("Extract tasks...")
-    # mod, params, input_shape, _ = get_network('resnet-18', batch_size=1)
-    mod, params, input_shape, _ = get_conv2d(batch_size=1)
-    # pdb.set_trace()
-    tasks = autotvm.task.extract_from_program(mod['main'], target=target,
-                                              params=params,
-                                              ops=(relay.op.get("nn.conv2d"),))
-
-    # with relay.build_config(opt_level=3):
-    #     graph, lib, params = relay.build_module.build(
-    #         mod, target=target, params=params)
-
-    # build_dir = os.path.abspath(opts.out_dir)
-    # if not os.path.isdir(build_dir):
-    #     os.makedirs(build_dir)
-
-    # lib.save(os.path.join(build_dir, 'res_conv_model.o'))
-    # with open(os.path.join(build_dir, 'res_conv_graph.json'), 'w') as f_graph_json:
-    #     f_graph_json.write(graph)
-    # with open(os.path.join(build_dir, 'res_conv_params.bin'), 'wb') as f_params:
-    #     f_params.write(relay.save_param_dict(params))
-    # with open(os.path.join(build_dir, "test_data.bin"), "wb") as fp:
-    #     fp.write(x_data.astype(np.float32).tobytes())
-
-    # # run tuning tasks
-    print("Tuning...")
-    tune_tasks(tasks, **tuning_opt)
-
-    # # compile kernels with history best records
-    # with autotvm.apply_history_best(log_file):
-    #     print("Compile...")
-    #     with relay.build_config(opt_level=3):
-    #         graph, lib, params = relay.build_module.build(
-    #             mod, target=target, params=params)
-
-    #     # export library
-    #     tmp = tempdir()
-    #     if use_android:
-    #         from tvm.contrib import ndk
-    #         filename = "net.so"
-    #         lib.export_library(tmp.relpath(filename), ndk.create_shared)
-    #     else:
-    #         filename = "net.tar"
-    #         lib.export_library(tmp.relpath(filename))
-
-    #     # upload module to device
-    #     print("Upload...")
-    #     remote = autotvm.measure.request_remote(device_key, '0.0.0.0', 9190,
-    #                                             timeout=10000)
-    #     remote.upload(tmp.relpath(filename))
-    #     rlib = remote.load_module(filename)
-
-    #     # upload parameters to device
-    #     ctx = remote.context(str(target), 0)
-    #     module = runtime.create(graph, rlib, ctx)
-    #     data_tvm = tvm.nd.array((np.random.uniform(size=input_shape)).astype(dtype))
-    #     module.set_input('data', data_tvm)
-    #     module.set_input(**params)
-
-    #     # evaluate
-    #     print("Evaluate inference time cost...")
-    #     ftimer = module.module.time_evaluator("run", ctx, number=1, repeat=10)
-    #     prof_res = np.array(ftimer().results) * 1000  # convert to millisecond
-    #     print("Mean inference time (std dev): %.2f ms (%.2f ms)" %
-    #           (np.mean(prof_res), np.std(prof_res)))
-
 def generate_id(id=0):
     id = np.array(id).astype(np.uint16)
     with open(os.path.join(build_dir, 'id.bin'), "wb") as fp:
@@ -541,7 +470,6 @@ def generate_id(id=0):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--out-dir', default='.')
     parser.add_argument('--test', action='store_true')
@@ -565,48 +493,6 @@ if __name__ == '__main__':
         build_test_module(opts)
     elif opts.conv2d:
         build_conv2d_module(opts)
-    elif opts.conv2dauto:
-        if opts.x86:
-            log_file = "%s.log" % ('conv2d-network')
-            tuning_option = {
-                'log_filename': log_file,
-                'tuner': 'random',
-                'n_trial': 1500,
-                'early_stopping': None,
-                'measure_option': autotvm.measure_option(
-                    builder=autotvm.LocalBuilder(),
-                    runner=autotvm.LocalRunner(
-                        number=10, repeat=1,
-                        min_repeat_ms=1000
-                    ),
-                ),
-                'use_transfer_learning' : False,
-            }
-        else:
-            # Also replace this with the device key in your tracker
-            device_key = 'AzureSphere'
-            # Set this to True if you use android phone
-            use_android = False
-            #### TUNING OPTION ####
-            log_file = "%s.%s.log" % (device_key, 'conv2d-network')
-            tuning_option = {
-                'log_filename': log_file,
-                'tuner': 'xgb',
-                'n_trial': 1500,
-                'early_stopping': 800,
-                'measure_option': autotvm.measure_option(
-                    builder=autotvm.LocalBuilder(),
-                    # runner=autotvm.RPCRunner(
-                    runner=autotvm.DebugRunner(
-                        # gdb="/opt/azurespheresdk/Sysroots/4/tools/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-musleabi/arm-poky-linux-musleabi-gdb",
-                        gdb="gdb",
-                        key=device_key, host='0.0.0.0', port=9190,
-                        number=5,
-                        timeout=10,
-                    ),
-                ),
-            }
-        tune_and_evaluate(opts, tuning_option)
     elif opts.cifar:
         build_cifar(opts, model_name='cifar-10')
         # build_cifar(opts, model_name='cifar-10-relay')

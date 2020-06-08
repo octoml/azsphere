@@ -71,6 +71,13 @@ conv2d_network: $(build_dir)/conv2d_model.o $(build_dir)/id.bin
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
+cifar: $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_graph.json.c $(build_dir)/cifar_params.bin 
+	@mkdir -p $(build_dir)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
+keyword: $(build_dir)/keyword_model.o
+	@mkdir -p $(build_dir)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
 #####
 model: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
@@ -90,48 +97,6 @@ $(build_dir)/hello_imagepackage:
 	@mkdir -p $(@D)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja -v
 
-$(build_dir)/cifar_imagepackage: $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_graph.json.c $(build_dir)/cifar_params.bin 
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
-
-$(build_dir)/keyword_imagepackage: $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin 
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
-
-rebuilt:
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
-
-$(build_dir)/sudo: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.bin $(build_dir)/conv2d_params.bin
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
-
-$(build_dir)/conv2d_net_imagepackage: $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.json.c $(build_dir)/conv2d_params.bin.c
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
-
-
-
-# Serialize graph.json file.
-$(build_dir)/keyword_graph.json.c: $(build_dir)/keyword_graph.json
-	xxd -i $^  > $@
-
-$(build_dir)/cifar_graph.json.c: $(build_dir)/cifar_graph.json
-	xxd -i $^  > $@
-
-$(build_dir)/graph.json.c: $(build_dir)/graph.json
-	xxd -i $^  > $@
-
-$(build_dir)/conv2d_graph.json.c: $(build_dir)/conv2d_graph.json
-	xxd -i $^  > $@
-
-# Serialize params.bin file.
-$(build_dir)/params.bin.c: $(build_dir)/params.bin
-	xxd -i $^  > $@
-
-$(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
-	xxd -i $^  > $@
-
 # build model
 $(build_dir)/test_model.o: python/build_model.py
 	python3 $< -o $(build_dir) --test
@@ -139,15 +104,15 @@ $(build_dir)/test_model.o: python/build_model.py
 $(build_dir)/conv2d_model.o: python/build_model.py
 	python3 $< -o $(build_dir) --conv2d
 
-$(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin $(build_dir)/keyword_data.bin $(build_dir)/keyword_output.bin: build_model.py
-	python3 $< -o $(build_dir) --keyword --footprint
-	# --tuned
-	# --footprint
-
 $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_params.bin $(build_dir)/cifar_data.bin $(build_dir)/cifar_output.bin: build_model.py
 	python3 $< -o $(build_dir) --cifar
 	# --tuned
 	# --quantize
+
+$(build_dir)/keyword_model.o: python/build_model.py
+	python3 $< -o $(build_dir) --keyword --footprint
+	# --tuned
+	# --footprint
 
 $(build_dir)/id.bin: python/build_model.py
 	python3 $< -o $(build_dir) --id
