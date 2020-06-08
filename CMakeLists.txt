@@ -1,13 +1,10 @@
-#  Copyright (c) Microsoft Corporation. All rights reserved.
-#  Licensed under the MIT License.
-
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
-PROJECT(octoml_AS C)
+PROJECT(azsphere_tvm C)
 azsphere_configure_tools(TOOLS_REVISION "20.04")
 azsphere_configure_api(TARGET_API_SET "5+Beta2004")
 
-# Set for unit test or demo
-OPTION(TEST "Is this test?" OFF)
+# Set mode here
+OPTION(TEST "TVM a+b test" ON)
 OPTION(CONV2D "Is this conv2d?" OFF)
 OPTION(CONV2D_NET "Is this conv2d network?" OFF)
 OPTION(DEMO "Is this demo?" OFF)
@@ -16,7 +13,7 @@ OPTION(KEYWORD "Is this keyword model?" OFF)
 OPTION(KEYWORD_DEMO "Is this keyword demo?" OFF)
 OPTION(HELLO "Is this hello world?" OFF)
 OPTION(INTERCOMM "Is this intercore communication?" OFF)
-OPTION(DEMO1 "TVM, Intercore connection of preprocessing" ON)
+OPTION(DEMO1 "TVM, Intercore connection of preprocessing" OFF)
 
 #3rdparty
 SET(ML_KWS 3rdparty/ML_KWS/Deployment)
@@ -26,7 +23,8 @@ SET(CMSIS 3rdparty/CMSIS_5/CMSIS)
 # object files including the model
 if(TEST)
   message("INFO: Building unit test!")
-  SET(CFILES test.c bundle_static.c)
+  SET(CFILES  test.c
+              src/bundle_static.c src/utils.c)
   SET(OBJS build/test_model.o)
 elseif(CONV2D)
   message("INFO: Building Conv2d!")
@@ -106,7 +104,10 @@ azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "Hardware/m
 # Add MakeImage post-build command
 # Note: No space between multiple file names
 if(TEST)
-  SET(ADDITIONAL_APPROOT_INCLUDES "build/test_data.bin;build/test_output.bin;build/test_graph.json;build/test_params.bin")
+  azsphere_target_add_image_package(
+    ${PROJECT_NAME} RESOURCE_FILES
+        "build/test_data.bin" "build/test_output.bin" "build/test_graph.json" "build/test_params.bin"
+  )
 elseif(CONV2D)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin")
 elseif(CONV2D_NET)

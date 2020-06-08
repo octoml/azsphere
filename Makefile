@@ -18,8 +18,9 @@ copy:
 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin build/
 	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin build/
 
+#azure sphere commands
 program:
-	azsphere device sideload deploy --imagepackage $(build_dir)/octoml_AS.imagepackage
+	azsphere device sideload deploy --imagepackage $(build_dir)/azsphere_tvm.imagepackage
 
 start:
 	azsphere device app start --componentID 1689d8b2-c835-2e27-27ad-e894d6d15fa9
@@ -52,6 +53,12 @@ install_ethernet:
 
 remove_ethernet:
 	azsphere device sideload delete --componentID 1cf5f2f3-19a8-4782-9330-3ab046b95e89
+
+
+# build imagepackage
+test: $(build_dir)/test_model.o
+	@mkdir -p $(build_dir)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
 model: $(build_dir)/model.o $(build_dir)/graph.json.c $(build_dir)/params.bin.c
 
@@ -98,9 +105,7 @@ $(build_dir)/conv2d_imagepackage: $(build_dir)/conv2d_model.o $(build_dir)/conv2
 	@mkdir -p $(@D)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
 
-$(build_dir)/test_imagepackage: $(build_dir)/test_model.o
-	@mkdir -p $(@D)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+
 
 # Serialize graph.json file.
 $(build_dir)/keyword_graph.json.c: $(build_dir)/keyword_graph.json
@@ -123,6 +128,9 @@ $(build_dir)/conv2d_params.bin.c: $(build_dir)/conv2d_params.bin
 	xxd -i $^  > $@
 
 # build model
+$(build_dir)/test_model.o: python/build_model.py
+	python3 $< -o $(build_dir) --test
+
 $(build_dir)/keyword_model.o $(build_dir)/keyword_graph.bin $(build_dir)/keyword_params.bin $(build_dir)/keyword_data.bin $(build_dir)/keyword_output.bin: build_model.py
 	python3 $< -o $(build_dir) --keyword --footprint
 	# --tuned
@@ -147,9 +155,6 @@ $(build_dir)/conv2d_model.o $(build_dir)/conv2d_graph.bin $(build_dir)/conv2d_pa
 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_data.bin $(build_dir)
 	cp -f tuning/build/${task_dir}/${copy_dir}/build/conv2d_output.bin $(build_dir)
 	cp -f tuning/build/${task_dir}/${copy_dir}/build/id.bin $(build_dir)
-
-$(build_dir)/test_model.o $(build_dir)/test_graph.json $(build_dir)/test_params.bin $(build_dir)/test_data.bin $(build_dir)/test_output.bin: build_model.py
-	python3 $< -o $(build_dir) --test
 
 clean:
 	rm -rf $(build_dir)
