@@ -4,8 +4,8 @@ azsphere_configure_tools(TOOLS_REVISION "20.04")
 azsphere_configure_api(TARGET_API_SET "5+Beta2004")
 
 # Set mode here
-OPTION(TEST "TVM a+b test" ON)
-OPTION(CONV2D "Is this conv2d?" OFF)
+OPTION(TEST "TVM a+b test" OFF)
+OPTION(CONV2D "TVM Relay conv2d test" ON)
 OPTION(CONV2D_NET "Is this conv2d network?" OFF)
 OPTION(DEMO "Is this demo?" OFF)
 OPTION(CIFAR "Is this cifar?" OFF)
@@ -15,20 +15,17 @@ OPTION(HELLO "Is this hello world?" OFF)
 OPTION(INTERCOMM "Is this intercore communication?" OFF)
 OPTION(DEMO1 "TVM, Intercore connection of preprocessing" OFF)
 
-#3rdparty
+#3rdparty directories
 SET(ML_KWS 3rdparty/ML_KWS/Deployment)
 SET(CMSIS 3rdparty/CMSIS_5/CMSIS)
 
-
-# object files including the model
 if(TEST)
-  message("INFO: Building unit test!")
   SET(CFILES  test.c
               src/bundle_static.c src/utils.c)
   SET(OBJS build/test_model.o)
 elseif(CONV2D)
-  message("INFO: Building Conv2d!")
-  SET(CFILES conv2d.c bundle_static.c)
+  SET(CFILES  conv2d.c
+              src/bundle_static.c src/utils.c)
   SET(OBJS build/conv2d_model.o)
 elseif(CONV2D_NET)
   message("INFO: Building Conv2d Network!")
@@ -106,10 +103,13 @@ azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "Hardware/m
 if(TEST)
   azsphere_target_add_image_package(
     ${PROJECT_NAME} RESOURCE_FILES
-        "build/test_data.bin" "build/test_output.bin" "build/test_graph.json" "build/test_params.bin"
+      "build/test_data.bin" "build/test_output.bin" "build/test_graph.json" "build/test_params.bin"
   )
 elseif(CONV2D)
-  SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin")
+  azsphere_target_add_image_package(
+    ${PROJECT_NAME} RESOURCE_FILES
+      "build/conv2d_data.bin" "build/conv2d_output.bin" "build/conv2d_graph.json" "build/conv2d_params.bin"
+  )
 elseif(CONV2D_NET)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/conv2d_data.bin;build/conv2d_output.bin;build/id.bin")
 elseif(DEMO)

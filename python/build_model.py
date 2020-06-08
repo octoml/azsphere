@@ -20,14 +20,6 @@ if local:
 else:
     TARGET = 'llvm -target=arm-poky-linux-musleabi -mcpu=cortex-a7 --system-lib'
 
-BATCH = 1
-IN_CHANNEL = 3
-OUT_CHANNEL = 3
-IN_SIZE = 20
-KERNEL = 7
-PAD = 3
-STRIDE = 1
-
 def build_test_module(opts):
     import numpy as np
 
@@ -55,6 +47,60 @@ def build_test_module(opts):
     x_output = x_data + y_data
     with open(os.path.join(build_dir, "test_output.bin"), "wb") as fp:
         fp.write(x_output.astype(np.float32).tobytes())
+
+def build_conv2d_module(opts):
+    batch = 1
+    in_channel = 3
+    out_channel = 16
+    in_size = 8
+    kernel = 3
+    pad = 1
+    stride = 1
+
+    A = relay.var('A', shape=(batch, in_channel, in_size, in_size))
+    W = relay.var('W', shape=(out_channel, in_channel, kernel, kernel))
+    B = relay.op.nn.nn.conv2d(A, W,
+                            strides=(stride, stride),
+                            padding=(pad, pad),
+                            kernel_size=kernel, 
+                            data_layout='NCHW', 
+                            kernel_layout='OIHW',
+                            out_layout='',
+                            out_dtype='')
+
+    a_data = np.random.uniform(size=(batch, in_channel, 
+                            in_size, in_size)).astype('float32')
+    w_data = np.random.uniform(size=(out_channel, in_channel, 
+                            kernel, kernel)).astype('float32')
+    func = relay.Function([A, W], B)
+    params = {"W": w_data}
+    graph, lib, params = relay.build_module.build(
+        tvm.IRModule.from_expr(func), target=TARGET, params=params)
+
+    build_dir = os.path.abspath(opts.out_dir)
+    if not os.path.isdir(build_dir):
+        os.makedirs(build_dir)
+    
+    lib.save(os.path.join(build_dir, 'conv2d_model.o'))
+    with open(os.path.join(build_dir, 'conv2d_graph.json'), 'w') as f_graph_json:
+        f_graph_json.write(graph)
+    with open(os.path.join(build_dir, 'conv2d_params.bin'), 'wb') as f_params:
+        f_params.write(relay.save_param_dict(params))
+    with open(os.path.join(build_dir, "conv2d_data.bin"), "wb") as fp:
+        fp.write(a_data.astype(np.float32).tobytes())
+
+    ## get TVM result on local machine
+    params = {"W": w_data}
+    local_target = 'llvm --system-lib'
+    graph, lib, params = relay.build_module.build(
+        tvm.IRModule.from_expr(func), target=local_target, params=params)
+    tvm_out = run_conv2d_module(a_data, graph, lib, params, target=local_target)
+    b_np = conv2d_nchw_python(a_data, w_data, (stride, stride), (pad, pad))
+    print("TVM Output: " + str(tvm_out.shape))
+    print("Numpy Output: " + str(b_np.shape))
+    np.testing.assert_allclose(b_np, tvm_out, rtol=1e-2)
+    with open(os.path.join(build_dir, "conv2d_output.bin"), "wb") as fp:
+        fp.write(tvm_out.astype(np.float32).tobytes())
 
 def build_module(opts):
     dshape = (1, 3, 224, 224)
@@ -288,52 +334,6 @@ def build_keyword_model(opts):
         fp.write(predictions.astype(np.float32).tobytes())
 
     generate_id()
-
-def build_conv2d_module(opts):
-    A = relay.var('A', shape=(BATCH, IN_CHANNEL, IN_SIZE, IN_SIZE))
-    W = relay.var('W', shape=(OUT_CHANNEL, IN_CHANNEL, KERNEL, KERNEL))
-    B = relay.op.nn.nn.conv2d(A, W,
-                            strides=(STRIDE, STRIDE),
-                            padding=(PAD, PAD),
-                            kernel_size=KERNEL, 
-                            data_layout='NCHW', 
-                            kernel_layout='OIHW',
-                            out_layout='',
-                            out_dtype='')
-
-    a_data = np.random.uniform(size=(BATCH, IN_CHANNEL, 
-                            IN_SIZE, IN_SIZE)).astype('float32')
-    w_data = np.random.uniform(size=(OUT_CHANNEL, IN_CHANNEL, 
-                            KERNEL, KERNEL)).astype('float32')
-    func = relay.Function([A, W], B)
-    params = {"W": w_data}
-    graph, lib, params = relay.build_module.build(
-        tvm.IRModule.from_expr(func), target=TARGET, params=params)
-
-    build_dir = os.path.abspath(opts.out_dir)
-    if not os.path.isdir(build_dir):
-        os.makedirs(build_dir)
-    
-    lib.save(os.path.join(build_dir, 'conv2d_model.o'))
-    with open(os.path.join(build_dir, 'conv2d_graph.json'), 'w') as f_graph_json:
-        f_graph_json.write(graph)
-    with open(os.path.join(build_dir, 'conv2d_params.bin'), 'wb') as f_params:
-        f_params.write(relay.save_param_dict(params))
-    with open(os.path.join(build_dir, "conv2d_data.bin"), "wb") as fp:
-        fp.write(a_data.astype(np.float32).tobytes())
-    
-    ## get TVM result on local machine
-    params = {"W": w_data}
-    local_target = 'llvm --system-lib'
-    graph, lib, params = relay.build_module.build(
-        tvm.IRModule.from_expr(func), target=local_target, params=params)
-    tvm_out = run_conv2d_module(a_data, graph, lib, params, target=local_target)
-    b_np = conv2d_nchw_python(a_data, w_data, (STRIDE, STRIDE), (PAD, PAD))
-    print("TVM Output: " + str(tvm_out.shape))
-    print("Numpy Output: " + str(b_np.shape))
-    np.testing.assert_allclose(b_np, tvm_out, rtol=1e-2)
-    with open(os.path.join(build_dir, "conv2d_output.bin"), "wb") as fp:
-        fp.write(tvm_out.astype(np.float32).tobytes())
 
 def run_conv2d_module(input, graph, lib, params, target):
     ctx = tvm.context(target, 0)
