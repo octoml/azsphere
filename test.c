@@ -17,7 +17,6 @@
 #include "include/config.h"
 #include "include/bundle.h"
 #include "include/utils.h"
-#include "include/exitcode.h"
 
 #define in_dim0     10
 #define in_dim1     5
@@ -40,7 +39,7 @@ int main(int argc, char **argv) {
       "ERROR: opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
       strerror(errno), errno);
     #endif
-    return ExitCode_Main_Led;
+    goto failed;
   }
   int fid;
   struct timeval t0, t1, t2, t3, t4, t5;
@@ -66,7 +65,6 @@ int main(int argc, char **argv) {
   int *handle = tvm_runtime_create(graph_data, params_data, params_size);
   gettimeofday(&t1, 0);
 
-  //graph and params not required anymore
   free(graph_data);
   free(params_data);
 
@@ -137,9 +135,7 @@ int main(int argc, char **argv) {
   if (result) {
     GPIO_SetValue(fd, GPIO_Value_Low);
   }
-  for(;;) {
-
-  }
+  for(;;) {}
 
 failed:
   GPIO_SetValue(fd, GPIO_Value_High);
