@@ -19,8 +19,6 @@
 #include "include/utils.h"
 #include "include/exitcode.h"
 
-// #include <tvm/runtime/c_runtime_api.h>
-
 #define in_dim0     10
 #define in_dim1     5
 
