@@ -13,7 +13,7 @@ We show machine learning model deployment on [MT3620 Azure Sphere](https://azure
 - Tensorflow
 
 ## Getting Started
-1. Clone this repository
+1. Clone this repository (use ```git clone --recursive``` to clone submodules)
 2. [Install TVM](https://docs.tvm.ai/install/from_source.html)
    - **NOTE:** Ensure you enable LLVM by setting ```set(USE_LLVM ON)```. (This repository has been tested against LLVM-10)
    - **NOTE:** Checkout ```f5b02fdb1b5a7b6be79df97035ec1c3b80e3c665``` before installation.
@@ -23,6 +23,7 @@ $ python3 -mvenv _venv
 $ . _venv/bin/activate
 $ pip3 install -r requirements.txt -c constraints.txt
 $ export PYTHONPATH=$(pwd)/python:$PYTHONPATH
+$ export PYTHONPATH=$(pwd)/3rdparty/ML_KWS:$PYTHONPATH
 ```
 
 ## Prepare the Hardware
@@ -63,12 +64,27 @@ $ make program
 ```
 In following subsection, we explain how we achieve this deployment in more details.
 
-### Importing KWS Tensorflow Model
+### Importing KWS, Quantization and Accuracy
 KWS models are originally developed in Tensorflow. Here we focus on [DS-CNN pre-trained models](https://github.com/ARM-software/ML-KWS-for-MCU/tree/master/Pretrained_models/DS_CNN) provided by ARM. To import the model and perform Relay quantization, run this command. This will save the relay module as a pickle file which we can use to build the runtime.
 ```bash
-python3 -m models.kws.kws --export --quantize --global-scale 4.0 -o build
+python3 -m model.kws.kws --export --quantize --global-scale 4.0 -o build
+```
+Here is the output:
+```
+INFO: Quantizing...
+INFO: Global Scale: 4.0
+INFO: build/module_gs_4.0.pickle saved!
 ```
 
+To test the accuracy of the quantized model run the following. This will load the Relay module and run ```1000``` audio samples from KWS dataset and shows the accuracy.
+```bash
+python3 -m model.kws.kws --test 1000 --module build/module_gs_4.0.pickle 
+```
+This task will take few minutes the first time because of downloading the dataset. Here is the output:
+```
+INFO: testing 1000 samples
+Accuracy for 1000 samples: 0.907
+```
 
 ## References
 Here are some of the references used in this project:
