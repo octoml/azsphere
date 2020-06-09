@@ -23,6 +23,7 @@ $ python3 -mvenv _venv
 $ . _venv/bin/activate
 $ pip3 install -r requirements.txt -c constraints.txt
 $ export PYTHONPATH=$(pwd)/python:$PYTHONPATH
+$ export PYTHONPATH=$(pwd)/3rdparty/ML_KWS:$PYTHONPATH
 ```
 
 ## Prepare the Hardware
