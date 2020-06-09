@@ -40,10 +40,6 @@ install_ethernet:
 	azsphere image-package pack-board-config --preset lan-enc28j60-isu0-int5 --output enc28j60-isu0-int5.imagepackage
 	azsphere device sideload deploy --imagepackage enc28j60-isu0-int5.imagepackage
 	rm -f enc28j60-isu0-int5.imagepackage
-
-remove_ethernet:
-	azsphere device sideload delete --componentID 1cf5f2f3-19a8-4782-9330-3ab046b95e89
-
 ############################################################################
 # build imagepackage
 ############################################################################
@@ -85,15 +81,14 @@ $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_param
 	# --quantize
 
 $(build_dir)/keyword_model.o: python/build_model.py
-	python3 $< -o $(build_dir) --keyword --footprint
-	# --tuned
-	# --footprint
+	python3 $< -o $(build_dir) --keyword --tuned python/tuning/kws/kws_conv_notquantized_footprint.txt --module python/model/kws/saved/module_gs_4.0_conv_notquantized.pickle
 
 $(build_dir)/id.bin: python/build_model.py
 	python3 $< -o $(build_dir) --id
 
 clean:
-	rm -rf $(build_dir)
+	rm -rf $(build_dir)/*.out $(build_dir)/*.imagepackage $(build_dir)/*.ninja $(build_dir)/*.log $(build_dir)/CMakeCache.txt
+	rm -rf $(build_dir)/CMakeFiles $(build_dir)/approotazsphere_tvm $(build_dir)/*.cmake $(build_dir)/.ninja*
 
 cleanall:
 	rm -rf $(build_dir)

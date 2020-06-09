@@ -13,15 +13,11 @@
 #include <math.h>
 #include <float.h>
 
-// #include <tvm/runtime/c_runtime_api.h>
 #include "include/config.h"
 #include "include/bundle.h"
 #include "include/utils.h"
 #include "include/exitcode.h"
-
-#if AS_NETWORKING
-#include "network.h"
-#endif
+#include "include/network.h"
 
 #define in_dim0     1
 #define in_dim1     49
@@ -203,7 +199,7 @@ int main(int argc, char **argv) {
   char time_array[10];
   int ret = snprintf(time_array, sizeof time_array, "%3.5f", duration);
   if (ret < 0){
-    goto endApp;
+    goto failed;
   }
 
   for (int ii=0; ii<10; ii++) {
