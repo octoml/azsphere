@@ -1,5 +1,5 @@
 ## Overview
-We show machine learning model deployment on [MT3620 Azure Sphere](https://azure.microsoft.com/en-us/services/azure-sphere/get-started/) using [Apache TVM](https://tvm.apache.org/). We show multiple deployments from a simple ```a+b``` example to a ```Conv2D``` operation and finally we deploy [Keyword Spotting](https://github.com/ARM-software/ML-KWS-for-MCU) model developed by ARM.
+We show machine learning model deployment on [MT3620 Azure Sphere](https://azure.microsoft.com/en-us/services/azure-sphere/get-started/) using [Apache TVM](https://tvm.apache.org/). We show multiple deployments from a simple ```a + b``` example to a ```Conv2D``` operation and finally we deploy [Keyword Spotting](https://github.com/ARM-software/ML-KWS-for-MCU) model developed by ARM.
 
 ## Hardware Requirements
 - Linux machine
@@ -25,6 +25,28 @@ $ pip3 install -r requirements.txt -c constraints.txt
 $ export PYTHONPATH=$(pwd)/python:$PYTHONPATH
 ```
 
+## Prepare the Hardware
+1. Connect Azure Sphere board to PC with micro USB cable.
+2. In the current directory run ```make connect``` to connect to device. (This requires ```sudo``` access)
+3. Enable evelopment by running ```make enable_development``` command.
+4. Optional: Follow this to enable network capability:
+   - Disconnect the device and attach the network shield.
+   - Setup static IP
+   ```bash
+   Netmask XXX
+   Gateway XXX
+   IP address XXXX
+   ```
+
+## Run Samples
+The basic sample is ```a + b``` operation. In this example, we deploy a simple operation on Azure Sphere using [C Runtime](https://github.com/apache/incubator-tvm/tree/master/src/runtime/crt) from TVM. To deploy this follow these instructions:
+```bash
+$ make delete_a7
+$ make clean
+$ make test
+$ make program
+```
+After programming the Azure Sphere, it reads TVM graph and parameters from FLASH and creates the runtime. Then it will read input data from FLASH, pass it to the TVM Relay model and finally compares the output with expected output from X86 machine. If the result maches, LED1 on the Azure Sphere would change to green.
 
 ## Prepare the environment
 
