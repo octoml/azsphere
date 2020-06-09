@@ -66,6 +66,10 @@ In following subsection, we explain how we achieve this deployment in more detai
 ### Importing KWS Tensorflow Model
 KWS models are originally developed in Tensorflow. Here we focus on [DS-CNN pre-trained models](https://github.com/ARM-software/ML-KWS-for-MCU/tree/master/Pretrained_models/DS_CNN) provided by ARM.
 
+```bash
+python3 -m models.kws.kws --export --quantize --global-scale 4.0 -o build
+```
+
 ## References
 Here are some of the references used in this project:
 
