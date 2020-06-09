@@ -34,16 +34,16 @@ $ export PYTHONPATH=$(pwd)/3rdparty/ML_KWS:$PYTHONPATH
    - Disconnect the device and attach the network shield.
    - Setup static IP
    ```bash
-   Netmask XXX
-   Gateway XXX
-   IP address XXXX
+   Address 192.168.0.10
+   Netmask 24
+   Gateway 192.168.0.1
    ```
 
 ## Run Samples
 The basic sample is ```a + b``` operation. In this example, we deploy a simple operation on Azure Sphere using [C Runtime](https://github.com/apache/incubator-tvm/tree/master/src/runtime/crt) from TVM. To deploy this follow these instructions:
 ```bash
 $ make delete_a7
-$ make clean
+$ make cleanall
 $ make test
 $ make program
 ```
@@ -53,12 +53,13 @@ Next sample is ```Conv2D``` operation. To run this example, follow previous inst
 
 ## Debugging
 Azure Sphere provides debugging capabilities over the micro USB connection with no extra hardware requirements. To use debugger open [Visual Studio Code](https://code.visualstudio.com/) in current directory and follow [instructions](https://docs.microsoft.com/en-us/azure-sphere/install/development-environment-linux).
+To enable debugging in samples, build the sample with these options:```-DAS_DEBUG=1 -DAS_NETWORKING=1 -DAS_ETHERNET_DEBUG=1``` or change them in [config](./include/config.h) file.
 
 ## Keyword Spotting (KWS) Model on Azure Sphere
 We deploy KWS, a tensorflow model developed by ARM, on Azure Sphere Cortex-A7 core using TVM. To enable this, we need to follow several steps as I explain in following. But to see the final deployment quickly, run these commands to deploy KWS model on Azure Sphere. In this deployment, we use a relay quantized KWS DS-CNN model. We build this model in TVM along with one of the WAV files in [samples](./python/models/kws/samples) as input data. Then we run this model on Azure Sphere and compare the TVM output with expected result from X86. If the result matches, we see a green LED on the board.
 ```bash
 $ make delete_a7
-$ make clean
+$ make cleanall
 $ make keyword
 $ make program
 ```
@@ -78,14 +79,28 @@ INFO: build/module_gs_4.0.pickle saved!
 
 To test the accuracy of the quantized model run the following. This will load the Relay module and run ```1000``` audio samples from KWS dataset and shows the accuracy.
 ```bash
-python3 -m model.kws.kws --test 1000 --module build/module_gs_4.0.pickle 
+$ python3 -m model.kws.kws --test 1000 --module build/module_gs_4.0.pickle 
 ```
 This task will take few minutes the first time because of downloading the dataset. Here is the output:
 ```
 INFO: testing 1000 samples
 Accuracy for 1000 samples: 0.907
 ```
-
+Now, we can build TVM runtime graph using this module. This command uses the saved quantized model to build runtime graph with no tuning.
+```bash
+$ python3 -m build_model --keyword --module build/module_gs_4.0.pickle -o build
+```
+Here is the output:
+```
+INFO: keyword_model.o saved!
+INFO: keyword_graph.bin saved!
+INFO: keyword_graph.json saved!
+INFO: keyword_params.bin saved!
+...
+INFO: sample audio file used: python/model/kws/samples/silence.wav
+INFO: keyword_data.bin saved!
+INFO: keyword_output.bin saved!
+```
 ## References
 Here are some of the references used in this project:
 
