@@ -235,33 +235,19 @@ def build_cifar(opts, model_name):
     generate_id()
 
 def build_keyword_model(opts):
-    from models.kws.kws import get_module, prepare_input
+    from model.kws.kws import get_module, prepare_input
 
     model_input_name = 'Mfcc'
     shape_dict = {model_input_name: (1, 49, 10)}
 
-    mod = get_module('python/models/kws/saved/module_gs_4.0_conv_notquantized.pickle')
+    mod = get_module(opts.module)
     print(mod)
     
     print("Compile...")
     if opts.tuned:
-        history_file = 'ks_conv_notquantized_runtime.txt'
-        print(f'INFO: Model tuning for runtime with file {history_file}!')
-        with autotvm.apply_history_best(os.path.join('python/tuning/kws', history_file)):
-            with relay.build_config(opt_level=3):
-                graph, lib, out_params = relay.build_module.build(
-                    mod, target=TARGET)
-    elif opts.footprint:
-        history_file = 'ks_conv_notquantized_footprint.txt'
-        print(f'INFO: Model tuning for footprint with file {history_file}!')
-        with autotvm.apply_history_best(os.path.join('python/tuning/kws', history_file)):
-            with relay.build_config(opt_level=3):
-                graph, lib, out_params = relay.build_module.build(
-                    mod, target=TARGET)
-    elif opts.multi:
-        history_file = 'ks_conv_notquantized_test1.txt'
-        print(f'INFO: Model tuning for footprint and runtime with file {history_file}!')
-        with autotvm.apply_history_best(os.path.join('python/tuning', history_file)):
+        history_file = opts.tuned
+        print(f'INFO: Model tuning for with file {history_file}!')
+        with autotvm.apply_history_best(history_file):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
                     mod, target=TARGET)
@@ -274,12 +260,16 @@ def build_keyword_model(opts):
     #save model, graph, params
     model_name = 'keyword'
     lib.save(os.path.join(build_dir, f'{model_name}_model.o'))
+    print(f'INFO: {model_name}_model.o saved!')
     with open(os.path.join(build_dir, f'{model_name}_graph.bin'), 'wb') as f_graph:
         f_graph.write(bytes(graph, 'utf-8'))
+        print(f'INFO: {model_name}_graph.bin saved!')
     with open(os.path.join(build_dir, f'{model_name}_graph.json'), 'w') as f_graph_json:
         f_graph_json.write(graph)
+        print(f'INFO: {model_name}_graph.json saved!')
     with open(os.path.join(build_dir, f'{model_name}_params.bin'), 'wb') as f_params:
         f_params.write(relay.save_param_dict(out_params))
+        print(f'INFO: {model_name}_params.bin saved!')
 
     #create input and result
     local_target = 'llvm --system-lib'
@@ -290,7 +280,8 @@ def build_keyword_model(opts):
     with open('build/graph.log', 'w') as f:
         f.write(str(graph))
 
-    input_data = prepare_input('python/models/kws/samples/silence.wav')
+    sample_file = 'python/model/kws/samples/silence.wav'
+    input_data = prepare_input(sample_file)
     ctx = tvm.context(local_target, 0)
     m = tvm.contrib.graph_runtime.create(graph_test, lib_test, ctx)
     m.set_input('Mfcc', input_data)
@@ -299,11 +290,14 @@ def build_keyword_model(opts):
     predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
     predictions = predictions[0]
 
+    print(f'INFO: sample audio file used: {sample_file}')
     # save data and output
     with open(os.path.join(build_dir, f'{model_name}_data.bin'), "wb") as fp:
         fp.write(input_data.astype(np.float32).tobytes())
+        print(f'INFO: {model_name}_data.bin saved!')
     with open(os.path.join(build_dir, f'{model_name}_output.bin'), "wb") as fp:
         fp.write(predictions.astype(np.float32).tobytes())
+        print(f'INFO: {model_name}_output.bin saved!')
 
     generate_id()
 
@@ -479,9 +473,8 @@ if __name__ == '__main__':
     parser.add_argument('--x86', action='store_true')
     parser.add_argument('--cifar', action='store_true')
     parser.add_argument('--keyword', action='store_true')
-    parser.add_argument('--tuned', action='store_true')
-    parser.add_argument('--footprint', action='store_true')
-    parser.add_argument('--multi', action='store_true')
+    parser.add_argument('--tuned', default=None, help="Use schedule log file to build")
+    parser.add_argument('--module', default=None, help="Relay module as a pickle file")
     parser.add_argument('--id', action='store_true')
     opts = parser.parse_args()
     
