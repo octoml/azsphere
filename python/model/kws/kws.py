@@ -305,10 +305,10 @@ if __name__ == '__main__':
     parser.add_argument('--global-scale', default=None, help="Global scale parameter for Relay quantization")
     parser.add_argument('--build', action='store_true')
     parser.add_argument('--target', default='llvm --system-lib')
-    parser.add_argument('--test', action=None, help="Test accuracy of the model")
-    parser.add_argument('--module', default=None)
-    parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--wav', default='')
+    parser.add_argument('--test', action=None, help="Test accuracy of the model with num of samples")
+    parser.add_argument('--module', default=None, help="Path to the Relay module pickle file")
+    parser.add_argument('--debug', action='store_true', help="Save debugging files")
+    parser.add_argument('--wav', default='', help="WAV test file")
 
     OPTS = parser.parse_args()
     DEBUG_LOG = OPTS.debug
