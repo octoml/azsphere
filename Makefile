@@ -49,27 +49,27 @@ remove_ethernet:
 ############################################################################
 test: $(build_dir)/test_model.o
 	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DTEST=ON && ninja
 
 conv2d: $(build_dir)/conv2d_model.o
 	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DCONV2D=ON && ninja
 
 conv2d_network: $(build_dir)/conv2d_model.o $(build_dir)/id.bin
 	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DCONV2D_NET=ON && ninja
 
 cifar: $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_graph.json.c $(build_dir)/cifar_params.bin 
 	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DCIFAR=ON && ninja
 
 keyword: $(build_dir)/keyword_model.o
 	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DKEYWORD=ON && ninja
 
 kws_demo: $(build_dir)/keyword_model.o
 	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) && ninja
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DDEMO=ON && ninja
 ############################################################################
 # build model
 ############################################################################

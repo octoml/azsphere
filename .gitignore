@@ -9,3 +9,6 @@ build/
 # python
 __pycache__
 .pkl*
+
+# virtual env
+_venv/

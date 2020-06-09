@@ -3,14 +3,6 @@ PROJECT(azsphere_tvm C)
 azsphere_configure_tools(TOOLS_REVISION "20.04")
 azsphere_configure_api(TARGET_API_SET "5+Beta2004")
 
-# Set mode here
-OPTION(TEST "TVM a+b test" OFF)
-OPTION(CONV2D "TVM Relay conv2d test" OFF)
-OPTION(CONV2D_NET "TVM Relay conv2d test with network azure sphere network setup" OFF)
-OPTION(CIFAR "Is this cifar?" OFF)
-OPTION(KEYWORD "TVM Relay Keyword Spotting model" OFF)
-OPTION(DEMO1 "KWS TVM Demo" ON)
-
 if(TEST)
   SET(CFILES  test.c
               src/bundle_static.c src/utils.c)
