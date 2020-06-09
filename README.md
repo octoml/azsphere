@@ -48,10 +48,27 @@ $ make program
 ```
 After programming the Azure Sphere, it reads TVM graph and parameters from FLASH and creates the runtime. Then it will read input data from FLASH, pass it to the TVM Relay model and finally compares the output with expected output from X86 machine. If the result maches, LED1 on the Azure Sphere would change to green.
 
-Next sample is ```Conv2D``` operation. To run this example, follow previous instructions and use ```conv2d``` instead of ```test```. If you want to use network capabilities, use ```conv2d_network```.
+Next sample is ```Conv2D``` operation. To run this example, follow previous instructions and use ```conv2d``` instead of ```test```. If you want to use network capabilities, use ```conv2d_network```. Make sure to follow previous instruction on conecting Ethernet shield to Azure Sphere and setup the network.
 
 ## Debugging
 Azure Sphere provides debugging capabilities over the micro USB connection with no extra hardware requirements. To use debugger open [Visual Studio Code](https://code.visualstudio.com/) in current directory and follow [instructions](https://docs.microsoft.com/en-us/azure-sphere/install/development-environment-linux).
+
+## Keyword Spotting (KWS) Model on Azure Sphere
+We deploy KWS, a tensorflow model developed by ARM, on Azure Sphere Cortex-A7 core using TVM. To enable this, we need to follow several steps as I explain in following. But to see the final deployment quickly, run these commands to deploy KWS model on Azure Sphere. In this deployment, we use a relay quantized KWS DS-CNN model. We build this model in TVM along with one of the WAV files in [samples](./python/models/kws/samples) as input data. Then we run this model on Azure Sphere and compare the TVM output with expected result from X86. If the result matches, we see a green LED on the board.
+```bash
+$ make delete_a7
+$ make clean
+$ make keyword
+$ make program
+```
+In following subsection, we explain how we achieve this deployment in more details.
+
+### Importing KWS Tensorflow Model
+KWS models are originally developed in Tensorflow. Here we focus on [DS-CNN pre-trained models](https://github.com/ARM-software/ML-KWS-for-MCU/tree/master/Pretrained_models/DS_CNN) provided by ARM. To import the model and perform Relay quantization, run this command. This will save the relay module as a pickle file which we can use to build the runtime.
+```bash
+python3 -m models.kws.kws --export --quantize --global-scale 4.0 -o build
+```
+
 
 ## References
 Here are some of the references used in this project:
