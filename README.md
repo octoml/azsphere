@@ -34,9 +34,9 @@ $ export PYTHONPATH=$(pwd)/3rdparty/ML_KWS:$PYTHONPATH
    - Disconnect the device and attach the network shield.
    - Setup static IP
    ```bash
-   Netmask XXX
-   Gateway XXX
-   IP address XXXX
+   Address 192.168.0.10
+   Netmask 24
+   Gateway 192.168.0.1
    ```
 
 ## Run Samples
