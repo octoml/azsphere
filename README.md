@@ -54,7 +54,7 @@ Next sample is ```Conv2D``` operation. To run this example, follow previous inst
 Azure Sphere provides debugging capabilities over the micro USB connection with no extra hardware requirements. To use debugger open [Visual Studio Code](https://code.visualstudio.com/) in current directory and follow [instructions](https://docs.microsoft.com/en-us/azure-sphere/install/development-environment-linux).
 
 ## References
-Here are some of the references that were used in this project:
+Here are some of the references used in this project:
 
 - [Incubator TVM](https://github.com/apache/incubator-tvm)
 - [TVM Documentation](https://tvm.apache.org/docs/)
