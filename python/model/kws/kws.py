@@ -27,8 +27,6 @@ if 'ARM_KWS_PATH' not in os.environ:
 ARM_KWS_PATH = os.environ['ARM_KWS_PATH']
 sys.path.insert(0, ARM_KWS_PATH)
 
-# from model.downcast import downcast_int8
-
 DEBUG_LOG = False
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 OPTS = None
