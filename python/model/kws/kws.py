@@ -1,6 +1,3 @@
-#####
-#This model is from: https://github.com/ARM-software/ML-KWS-for-MCU 
-#####
 import argparse
 import tvm
 from tvm import te
@@ -25,14 +22,12 @@ import tvm.relay.testing.tf as tf_testing
 import pickle
 import sys
 
-
 if 'ARM_KWS_PATH' not in os.environ:
     raise RuntimeError('must have ARM_KWS_PATH in environment')
 ARM_KWS_PATH = os.environ['ARM_KWS_PATH']
 sys.path.insert(0, ARM_KWS_PATH)
 
 # from model.downcast import downcast_int8
-
 
 DEBUG_LOG = False
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -48,31 +43,23 @@ label_url = os.path.join(repo_base, label_name)
 
 def export_module(opts):
     # Target settings
-    # Use these commented settings to build for cuda.
     layout = "NCHW"
-    #ctx = tvm.gpu(0)
-    # layout = None
-    # ctx = tvm.cpu(0)
 
-    ######################################################################
     # Download required files
     from tvm.contrib.download import download_testdata
     model_path = download_testdata(model_url, model_file_name, module=['tf', 'keyword_spotting'])
     label_path = download_testdata(label_url, label_name, module=['data'])
 
-    ######################################################################
     # Import model
     with tf_compat_v1.gfile.GFile(model_path, 'rb') as f:
         graph_def = tf_compat_v1.GraphDef()
         graph_def.ParseFromString(f.read())
         graph = tf.import_graph_def(graph_def, name='')
-        # Call the utility to import the graph definition into default graph.
         graph_def = tf_testing.ProcessGraphDefParam(graph_def)
-        # Add shapes to the graph.
         with tf_compat_v1.Session() as sess:
             graph_def = tf_testing.AddShapesToGraphDef(sess, 'labels_softmax')
 
-    build_dir = os.path.join(DIR_PATH, 'build')
+    build_dir = opts.out_dir
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
 
@@ -88,16 +75,10 @@ def export_module(opts):
     input_dim1 = 49
     input_dim2 = 10
     new_input = graph_def.node.add()
-    new_input.op = 'Placeholder'  # eg: 'Const', 'Placeholder', 'Add' etc
+    new_input.op = 'Placeholder'
     new_input.name = 'Mfcc'
     new_input.attr["dtype"].CopyFrom(attr_value_pb2.AttrValue(
             type=dtypes.float32.as_datatype_enum))
-    # new_input.attr["_output_shapes"].CopyFrom(attr_value_pb2.AttrValue(
-    #         type=dtypes.float32.as_datatype_enum))
-    # new_input.attr["value"].CopyFrom(
-    #     attr_value_pb2.AttrValue(tensor=tensor_util.make_tensor_proto(
-    #         [input_dim0, input_dim1, input_dim2], dtypes.float32, 
-    #         [input_dim0, input_dim1, input_dim2])))
                 
     nodes.append(new_input)
 
@@ -112,20 +93,7 @@ def export_module(opts):
             pass
         else:
             nodes.append(node) 
-    print(f'NUM of Removed: {removed_count}')
-
-    if opts.cast:
-        #add cast as the last layer
-        new_node = graph_def.node.add()
-        new_node.op = 'Cast'  # eg: 'Const', 'Placeholder', 'Add' etc
-        new_node.name = 'final_layer'
-        new_node.input.extend(['MobileNet/fc1/BiasAdd'])
-        new_node.attr["DstT"].CopyFrom(attr_value_pb2.AttrValue(
-                type=dtypes.int8.as_datatype_enum))
-        new_node.attr["SrcT"].CopyFrom(attr_value_pb2.AttrValue(
-                type=dtypes.float32.as_datatype_enum))
-        nodes.append(new_node)
-
+    print(f'NUM of layers removed: {removed_count}')
 
     new_graph = tf_compat_v1.GraphDef()
     new_graph.node.extend(nodes)
@@ -157,30 +125,19 @@ def export_module(opts):
                                     global_scale=global_scale,
                                     skip_conv_layers=[0]):
             mod = relay.quantize.quantize(mod, params)
-            # skip_conv_layers=[]
 
         if DEBUG_LOG:
             with open(os.path.join(build_dir, f'{model_name}_mod_quantized.log'), 'w') as mod_log:
                 mod_log.write(str(mod))
 
-    if opts.cast:
-        #Downcast to int8
-        func = downcast_int8(mod)
-        mod = tvm.IRModule.from_expr(func)
-
-        #log module after cast
-        if DEBUG_LOG:
-            with open(os.path.join(build_dir, f'{model_name}_mod_cast.log'), 'w') as mod_log:
-                mod_log.write()
-
     if opts.quantize:
         #save module
-        with open(f'{DIR_PATH}/keyword_model/module_gs_{global_scale}.pickle', 'wb') as h1:
+        file_path = f'{build_dir}/module_gs_{global_scale}.pickle'
+        with open(file_path, 'wb') as h1:
             pickle.dump(mod, h1, protocol=pickle.HIGHEST_PROTOCOL)
-        with open(f'{DIR_PATH}/keyword_model/module_gs_{global_scale}.txt', 'w') as f:
+            print(f'INFO: {file_path} saved!')
+        with open(f'{build_dir}/module_gs_{global_scale}.txt', 'w') as f:
             f.write(mod.astext())
-        print('INFO: module saved!')
-
     return mod, params
 
 def prepare_input(filename):
@@ -238,29 +195,6 @@ def build(opts, mod=None, params=None, target=None):
             graph, lib, out_params = relay.build(mod,
                                             target=target,
                                             params=params)
-
-    ##prepare input data and run config
-    # input_data = prepare_input(f'{DIR_PATH}/keyword_model/silence.wav')
-    # ctx = tvm.context(target, 0)
-
-    # m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
-    # m.set_input('Mfcc', input_data)
-    # m.set_input(**out_params)
-    # m.run()
-    # predictions = m.get_output(0, tvm.nd.empty(((1, 12)), 'float32')).asnumpy()
-
-    # print(predictions)
-    # predictions = predictions[0]
-    # labels = load_labels(f'{DIR_PATH}/keyword_model/labels.txt')
-    # print(labels)
-
-    # num_top_predictions = 12
-    # top_k = predictions.argsort()[-num_top_predictions:][::-1]
-    # for node_id in top_k:
-    #   human_string = labels[node_id]
-    #   score = predictions[node_id]
-    #   print('%s (score = %.5f)' % (human_string, score))
-
     return lib, graph, out_params
 
 def test_sample(target, filepath):
@@ -286,11 +220,6 @@ def test_sample(target, filepath):
     top_k = predictions.argsort()[-num_top_predictions:][::-1]
     for item in top_k:
         print('{:>12}\t{:>15}'.format(labels[item], predictions[item]))
-
-def wav_file_info(filepath):
-    from scipy.io import wavfile
-    fs, data = wavfile.read(filepath)
-    print(fs)
     
 def test_accuracy(opts, target):
     with open(opts.module, 'rb') as handle:
@@ -302,15 +231,15 @@ def test_accuracy(opts, target):
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
 
     #get test data
-    num_of_samples = 1000
+    num_of_samples = int(opts.test)
     test_data, test_label = get_dataset(num_of_samples)
+    print(f'INFO: testing {num_of_samples} samples')
 
     #eval data
     corrects = 0
     count = 0
     for test, label in zip(test_data, test_label):
         count += 1
-        # import pdb; pdb.set_trace()
         input_data = test.reshape((1, 49, 10))
         m.set_input('Mfcc', input_data)
         m.set_input(**out_params)
@@ -363,7 +292,6 @@ def get_dataset(num_of_samples):
     tf.logging.info('set_size=%d', set_size)
     total_accuracy = 0
     total_conf_matrix = None
-    # for i in range(0, set_size, batch_size):
     data, label = audio_processor.get_data(
         batch_size, 0, model_settings, 0.0, 0.0, 0, 'testing', sess)
     
@@ -371,14 +299,13 @@ def get_dataset(num_of_samples):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-o', '--out-dir', default='build')
-    parser.add_argument('--export', action='store_true')
-    parser.add_argument('-q', '--quantize', action='store_true')
-    parser.add_argument('--global-scale', default=None)
-    parser.add_argument('-c', '--cast', action='store_true')
-    parser.add_argument('-b', '--build', action='store_true')
-    parser.add_argument('-t', '--target', default='llvm --system-lib')
-    parser.add_argument('--test', action='store_true')
+    parser.add_argument('-o', '--out-dir', default='build', help="Output directory")
+    parser.add_argument('--export', action='store_true', help="Export model")
+    parser.add_argument('--quantize', action='store_true', help="Quantize KWS model")
+    parser.add_argument('--global-scale', default=None, help="Global scale parameter for Relay quantization")
+    parser.add_argument('--build', action='store_true')
+    parser.add_argument('--target', default='llvm --system-lib')
+    parser.add_argument('--test', action=None, help="Test accuracy of the model")
     parser.add_argument('--module', default=None)
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--wav', default='')
@@ -399,4 +326,3 @@ if __name__ == '__main__':
     
     if OPTS.wav:
         test_sample(target='llvm --system-lib', filepath=OPTS.wav)
-        # wav_file_info(OPTS.wav)
