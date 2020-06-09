@@ -69,6 +69,13 @@ KWS models are originally developed in Tensorflow. Here we focus on [DS-CNN pre-
 ```bash
 python3 -m model.kws.kws --export --quantize --global-scale 4.0 -o build
 ```
+Here is the output:
+```
+INFO: Quantizing...
+INFO: Global Scale: 4.0
+INFO: build/module_gs_4.0.pickle saved!
+```
+
 To test the accuracy of the quantized model run the following. This will load the Relay module and run ```1000``` audio samples from KWS dataset and shows the accuracy.
 ```bash
 python3 -m model.kws.kws --test 1000 --module build/module_gs_4.0.pickle 
