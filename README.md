@@ -48,6 +48,8 @@ $ make program
 ```
 After programming the Azure Sphere, it reads TVM graph and parameters from FLASH and creates the runtime. Then it will read input data from FLASH, pass it to the TVM Relay model and finally compares the output with expected output from X86 machine. If the result maches, LED1 on the Azure Sphere would change to green.
 
+Next sample is ```Conv2D``` operation. To run this example, follow previous instructions and use ```conv2d``` instead of ```test```.
+
 ## Prepare the environment
 
 1. Ensure that your Azure Sphere device is connected to your computer and your computer is connected to the internet.
