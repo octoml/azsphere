@@ -13,7 +13,7 @@ We show machine learning model deployment on [MT3620 Azure Sphere](https://azure
 - Tensorflow
 
 ## Getting Started
-1. Clone this repository
+1. Clone this repository (use ```git clone --recursive``` to clone submodules)
 2. [Install TVM](https://docs.tvm.ai/install/from_source.html)
    - **NOTE:** Ensure you enable LLVM by setting ```set(USE_LLVM ON)```. (This repository has been tested against LLVM-10)
    - **NOTE:** Checkout ```f5b02fdb1b5a7b6be79df97035ec1c3b80e3c665``` before installation.
