@@ -48,48 +48,15 @@ $ make program
 ```
 After programming the Azure Sphere, it reads TVM graph and parameters from FLASH and creates the runtime. Then it will read input data from FLASH, pass it to the TVM Relay model and finally compares the output with expected output from X86 machine. If the result maches, LED1 on the Azure Sphere would change to green.
 
-Next sample is ```Conv2D``` operation. To run this example, follow previous instructions and use ```conv2d``` instead of ```test```.
+Next sample is ```Conv2D``` operation. To run this example, follow previous instructions and use ```conv2d``` instead of ```test```. If you want to use network capabilities, use ```conv2d_network```.
 
-## Prepare the environment
+## Debugging
+Azure Sphere provides debugging capabilities over the micro USB connection with no extra hardware requirements. To use debugger open [Visual Studio Code](https://code.visualstudio.com/) in current directory and follow [instructions](https://docs.microsoft.com/en-us/azure-sphere/install/development-environment-linux).
 
-1. Ensure that your Azure Sphere device is connected to your computer and your computer is connected to the internet.
-1. Even if you've performed this setup previously, ensure that you have Azure Sphere SDK version 20.01 or above. At the command prompt, run **azsphere show-version** to check. Install the Azure Sphere SDK for [Windows](https://docs.microsoft.com/azure-sphere/install/install-sdk) or [Linux](https://docs.microsoft.com/azure-sphere/install/install-sdk-linux) as needed.
-1. Enable application development, if you have not already done so, by entering the following line at the command prompt:
+## References
+Here are some of the references used in this project:
 
-   `azsphere device enable-development`
-
-1. Clone this repository and TVM repository in home directory:
-```bash
-cd ~
-clone git@github.com:octoml/azure-sphere.git
-clone git clone --recursive https://github.com/apache/incubator-tvm.git tvm
-```
-
-## Build and run the sample
-Here I explain main functionalities of the Makefile.
-
-### Connecting to board
-To do this, run command below and this will connect to azure sphere device:
-```bash
-make connect
-```
-
-### Debugging
-Before debugging in VS, run this command. This command will make sure that 
-current side application on AS devicde is removed.
-```bash
-make debug_init
-```
-### Build Image Package
-Run this command to build image package and executable file.
-```bash
-make build/imagepackage
-```
-
-## Additional Resources
-See the following Azure Sphere Quickstarts to learn how to build and deploy on AS:
--  [with Visual Studio](https://docs.microsoft.com/azure-sphere/install/qs-blink-application)
--  [with VS Code](https://docs.microsoft.com/azure-sphere/install/qs-blink-vscode)
--  [on the Windows command line](https://docs.microsoft.com/azure-sphere/install/qs-blink-cli)
--  [on the Linux command line](https://docs.microsoft.com/azure-sphere/install/qs-blink-linux-cli)
-   
+- [Incubator TVM](https://github.com/apache/incubator-tvm)
+- [TVM Documentation](https://tvm.apache.org/docs/)
+- [Azure Sphere Samples](https://github.com/Azure/azure-sphere-samples)
+- [Keyword spotting on Arm Cortex-M Microcontrollers](https://github.com/ARM-software/ML-KWS-for-MCU)
