@@ -45,7 +45,7 @@ static uint16_t id;
 int main(int argc, char **argv) {
   Log_Debug("TVM Keyword Spotting model...\n");
 
-  int fd = GPIO_OpenAsOutput(LED1[0], GPIO_OutputMode_PushPull, GPIO_Value_High);
+  int fd = GPIO_OpenAsOutput(LED1[1], GPIO_OutputMode_PushPull, GPIO_Value_High);
   if (fd < 0) {
     #if AS_DEBUG
     fprintf(stdout,
