@@ -53,7 +53,13 @@ Next sample is ```Conv2D``` operation. To run this example, follow previous inst
 
 ## Debugging
 Azure Sphere provides debugging capabilities over the micro USB connection with no extra hardware requirements. To use debugger open [Visual Studio Code](https://code.visualstudio.com/) in current directory and follow [instructions](https://docs.microsoft.com/en-us/azure-sphere/install/development-environment-linux).
-To enable debugging in samples, build the sample with these options:```-DAS_DEBUG=1 -DAS_NETWORKING=1 -DAS_ETHERNET_DEBUG=1``` or change them in [config](./include/config.h) file.
+To enable debugging in samples follow these:
+1. Build the sample with these options:```-DAS_DEBUG=1 -DAS_NETWORKING=1``` or change them in [config](./include/config.h) file.
+2. Run TCP server to receive messages:
+```bash
+$ python3 -m network.tcp_server
+```
+3. Use Start Debugging option in VsCode
 
 ## Keyword Spotting (KWS) Model on Azure Sphere
 We deploy KWS, a tensorflow model developed by ARM, on Azure Sphere Cortex-A7 core using TVM. To enable this, we need to follow several steps as I explain in following. But to see the final deployment quickly, run these commands to deploy KWS model on Azure Sphere. In this deployment, we use a relay quantized KWS DS-CNN model. We build this model in TVM along with one of the WAV files in [samples](./python/models/kws/samples) as input data. Then we run this model on Azure Sphere and compare the TVM output with expected result from X86. If the result matches, we see a green LED on the board.
