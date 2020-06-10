@@ -1,6 +1,3 @@
-/* Copyright (c) Microsoft Corporation. All rights reserved.
-   Licensed under the MIT License. */
-
 #pragma once
 
 typedef enum {
@@ -36,7 +33,4 @@ typedef enum {
 
   ExitCode_TVM_Init =                                             27
 } ExitCode;
-
-
-    
     
