@@ -46,7 +46,10 @@ def server_start(opts):
 	sock.listen(1)
 
 	atexit.register(exitHandler)
-	log_file = open(opts.log, "wb+", buffering=0)
+	if opts.log:
+		log_file = open(opts.log, "wb+", buffering=0)
+	else:
+		log_file = None
 
 	numOfConnection = 1
 
@@ -105,7 +108,7 @@ def server_start(opts):
 				while True:
 					data = connection.recv(REC_BUFF_SIZE)
 					print("data: " + str(data))
-					if data:
+					if data and log_file:
 						log_file.write(data)
 					else:
 						print('no more data from ', client_address)
@@ -116,7 +119,7 @@ def server_start(opts):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--log', default='')
+	parser.add_argument('--log', default=None, help="Log server in file.")
 	parser.add_argument('--demo', action='store_true')
 	parser.add_argument('--wav', default=None, help='Path to a directory with WAV files')
 	parser.add_argument('--live', action='store_true')
