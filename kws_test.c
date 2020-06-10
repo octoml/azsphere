@@ -1,17 +1,7 @@
-#include <sys/time.h>
-#include <errno.h>
-#include <string.h>
-#include <time.h>
-#include <applibs/log.h>
-#include <applibs/gpio.h>
-#include <applibs/networking.h>
-#include <applibs/storage.h>
-#include <arpa/inet.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <math.h>
 #include <float.h>
+#include <sys/time.h>
+#include <applibs/gpio.h>
 
 #include "include/config.h"
 #include "include/bundle.h"
@@ -39,7 +29,19 @@ static ExitCode exitCode = ExitCode_Success;
 static uint16_t id;
 
 int main(int argc, char **argv) {
-  Log_Debug("TVM Keyword Spotting model...\n");
+  #if AS_NETWORKING
+  exitCode = NetworkEnable(interface);
+  exitCode = ConfigureNetworkInterfaceWithStaticIp(interface,
+                                                 "192.168.0.20",
+                                                 "255.255.255.0",
+                                                 "192.168.0.1");
+
+  int socket = OpenIpV4Socket(serverIP, serverPort, SOCK_STREAM, &exitCode);
+  #endif
+  
+  #if AS_NETWORK_DEBUG
+  Debug_Init(socket);
+  #endif
 
   int fd = GPIO_OpenAsOutput(LED1[1], GPIO_OutputMode_PushPull, GPIO_Value_High);
   if (fd < 0) {
@@ -55,16 +57,6 @@ int main(int argc, char **argv) {
   float duration;
 
   gettimeofday(&t0, 0);
-
-  #if AS_NETWORKING
-  exitCode = NetworkEnable(interface);
-  exitCode = ConfigureNetworkInterfaceWithStaticIp(interface,
-                                                 "192.168.0.20",
-                                                 "255.255.255.0",
-                                                 "192.168.0.1");
-
-  int socket = OpenIpV4Socket(serverIP, serverPort, SOCK_STREAM, &exitCode);
-  #endif
 
   // Read id
   ReadID(id_file, &id);
@@ -85,7 +77,7 @@ int main(int argc, char **argv) {
   Read_File_Char(graph_file, &graph_data);
 
   gettimeofday(&t0, 0);
-  auto *handle = tvm_runtime_create(graph_data, params_data, params_size);
+  int *handle = tvm_runtime_create(graph_data, params_data, params_size);
   gettimeofday(&t1, 0);
 
   free(graph_data);
@@ -163,9 +155,11 @@ int main(int argc, char **argv) {
     }
   }
 
+  #if AS_DEBUG
   fprintf(stdout, "The maximum position in output vector is: %d, with max-value %f.\n",
          max_index, max_iter);
-  
+  #endif
+
   #if AS_NETWORKING
   len = message(id, Message_RESULT, msg);
   msg[len] = ',';
