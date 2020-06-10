@@ -5,15 +5,13 @@ azsphere_configure_api(TARGET_API_SET "5+Beta2004")
 
 if(TEST)
   SET(CFILES  test.c
-              src/bundle_static.c src/utils.c)
+              src/bundle_static.c src/utils.c
+  )
   SET(OBJS build/test_model.o)
 elseif(CONV2D)
   SET(CFILES  conv2d.c
-              src/bundle_static.c src/utils.c)
-  SET(OBJS build/conv2d_model.o)
-elseif(CONV2D_NET)
-  SET(CFILES  conv2d_network.c
-              src/bundle_static.c src/utils.c)
+              src/bundle_static.c src/utils.c
+  )
   SET(OBJS build/conv2d_model.o)
 elseif(CIFAR)
   message("INFO: Building CIFAR demo!")
@@ -59,12 +57,6 @@ elseif(CONV2D)
   azsphere_target_add_image_package(
     ${PROJECT_NAME} RESOURCE_FILES
       "build/conv2d_data.bin" "build/conv2d_output.bin" "build/conv2d_graph.json" "build/conv2d_params.bin"
-  )
-elseif(CONV2D_NET)
-  azsphere_target_add_image_package(
-  ${PROJECT_NAME} RESOURCE_FILES
-    "build/conv2d_data.bin" "build/conv2d_output.bin" "build/conv2d_graph.json" "build/conv2d_params.bin"
-    "build/id.bin"
   )
 elseif(CIFAR)
   SET(ADDITIONAL_APPROOT_INCLUDES "build/cifar_data.bin;build/cifar_output.bin;build/cifar_params.bin;build/cifar_graph.bin;build/id.bin")

@@ -51,10 +51,6 @@ conv2d: $(build_dir)/conv2d_model.o
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DCONV2D=ON && ninja
 
-conv2d_network: $(build_dir)/conv2d_model.o $(build_dir)/id.bin
-	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DCONV2D_NET=ON && ninja
-
 cifar: $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_graph.json.c $(build_dir)/cifar_params.bin 
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DCIFAR=ON && ninja
