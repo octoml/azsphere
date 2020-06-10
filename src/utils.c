@@ -1,17 +1,20 @@
-
+#include <stdarg.h>
+#include <sys/socket.h>
 #include <applibs/storage.h>
 
 #include "include/utils.h"
 
-#if AS_ETHERNET_DEBUG
-int fprintf(FILE * file, const char * format, ...) {
+static int DEBUG_SOCKET = -1;
+
+#if AS_NETWORK_DEBUG
+int Log_Debug(const char *fmt, ...) {
   va_list args;
-  va_start(args, format);
+  va_start(args, fmt);
   int status;
 
   if (DEBUG_SOCKET < 0) {
-    //standard route
-    status = vfprintf(file, format, args);
+    //standard stdout
+    status = vfprintf(stdout, fmt, args);
   }
   else {
     //using Ethernet
@@ -22,7 +25,7 @@ int fprintf(FILE * file, const char * format, ...) {
       status = -1;
       return status;
     }
-    status = vsnprintf(message, DEBUG_MESSAGE_MAX_LENGTH, format, args);
+    status = vsnprintf(message, DEBUG_MESSAGE_MAX_LENGTH, fmt, args);
     send(DEBUG_SOCKET, message, status, 0);
   }
   
@@ -81,7 +84,7 @@ int Read_File_Int8(const char * filename, void** data) {
   *data = (int8_t*)malloc(fs);
   if (*data == NULL) {
     #if AS_DEBUG
-    fprintf(stderr, "Unable to allocate memory");
+    fprintf(stderr, "Unable to allocate memory\n");
     #endif  /* AS_DEBUG */
     return -1;
   }
@@ -116,7 +119,7 @@ int Read_File_Int32(const char * filename, void** data) {
   *data = (int32_t*)malloc(fs);
   if (*data == NULL) {
     #if AS_DEBUG
-    fprintf(stderr, "Unable to allocate memory");
+    fprintf(stderr, "Unable to allocate memory\n");
     #endif  /* AS_DEBUG */
     return -1;
   }
@@ -151,7 +154,7 @@ int Read_File_Char(const char * filename, char** data) {
   *data = (char*)malloc(fs);
   if (*data == NULL) {
     #if AS_DEBUG
-    fprintf(stderr, "Unable to allocate memory");
+    fprintf(stderr, "Unable to allocate memory\n");
     #endif  /* AS_DEBUG */
     return -1;
   }
@@ -187,7 +190,7 @@ int Read_File_Float(const char * filename, float** data) {
   *data = (float *)malloc(fs);
   if (*data == NULL) {
     #if AS_DEBUG
-    fprintf(stderr, "Unable to allocate memory");
+    fprintf(stderr, "Unable to allocate memory\n");
     #endif  /* AS_DEBUG */
     return -1;
   }

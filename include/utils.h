@@ -9,10 +9,9 @@
 #include <stdint.h>
 
 #define DEBUG_MESSAGE_MAX_LENGTH  128
-static int DEBUG_SOCKET = -1;
 
-#if AS_ETHERNET_DEBUG
-int fprintf(FILE * file, const char * format, ...)
+#if AS_NETWORK_DEBUG
+int Log_Debug(const char *fmt, ...);
 #endif
 
 void Debug_Init(int socket);
