@@ -26,7 +26,7 @@ int Log_Debug(const char *fmt, ...) {
       return status;
     }
     status = vsnprintf(message, DEBUG_MESSAGE_MAX_LENGTH, fmt, args);
-    send(DEBUG_SOCKET, message, status, 0);
+    send(DEBUG_SOCKET, message, (size_t)status, 0);
   }
   
   va_end(args);
