@@ -22,11 +22,6 @@ import tvm.relay.testing.tf as tf_testing
 import pickle
 import sys
 
-if 'ARM_KWS_PATH' not in os.environ:
-    raise RuntimeError('must have ARM_KWS_PATH in environment')
-ARM_KWS_PATH = os.environ['ARM_KWS_PATH']
-sys.path.insert(0, ARM_KWS_PATH)
-
 DEBUG_LOG = False
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 OPTS = None

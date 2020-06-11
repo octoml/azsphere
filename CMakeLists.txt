@@ -22,7 +22,7 @@ elseif(KEYWORD)
               src/bundle_static.c src/utils.c
   )
   SET(OBJS build/keyword_model.o)
-elseif(DEMO1)
+elseif(KWS_DEMO)
   SET(CFILES  kws_demo.c 
               src/bundle_static.c
               src/utils.c src/eventloop_timer_utilities.c
@@ -70,7 +70,7 @@ elseif(KEYWORD)
         "build/keyword_graph.bin"
         "build/id.bin"
     )
-elseif(DEMO1)
+elseif(KWS_DEMO)
   azsphere_target_add_image_package(
     ${PROJECT_NAME}
     RESOURCE_FILES

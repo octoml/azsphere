@@ -61,7 +61,7 @@ keyword: $(build_dir)/keyword_model.o
 
 kws_demo: $(build_dir)/keyword_model.o
 	@mkdir -p $(build_dir)
-	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DDEMO=ON && ninja
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DKWS_DEMO=ON && ninja
 ############################################################################
 # build model
 ############################################################################
