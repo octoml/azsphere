@@ -122,7 +122,11 @@ We deployed an end-to-end demo of Keyword Spotting model on Azure Sphere. We imp
    ```
 4. If you push ```button B```, it acquires one second speech from microphone and shows the label on three LEDs. Here is the LEDs state for each label.
 
-
+Label | Yes | No | Up | Down | Left | Right
+--- | --- | --- | --- |--- |--- |---
+LEDs | :black_circle::black_circle::green_heart::green_heart: | :black_circle::black_circle::red_circle::red_circle: | :black_circle::black_circle::green_heart::black_circle: | :black_circle::black_circle::large_blue_circle::black_circle: | :white_circle::black_circle::black_circle::black_circle: | :black_circle::black_circle::black_circle::white_circle:
+**Label** | **On** | **Off** | **Stop** | **Go** | **Silence** | **Unknown**
+LEDs | :white_circle::black_circle::white_circle::white_circle: | :red_circle::black_circle::black_circle::black_circle: | :red_circle::black_circle::red_circle::red_circle: | :green_heart::black_circle::green_heart::green_heart: | :black_circle::black_circle::black_circle::large_blue_circle: | :black_circle::black_circle::black_circle::green_heart:
 
 ## References
 Here are some of the references used in this project:
