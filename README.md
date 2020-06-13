@@ -108,7 +108,7 @@ INFO: keyword_data.bin saved!
 INFO: keyword_output.bin saved!
 ```
 
-## RealTime Demo
+## Real-time Demo
 We deployed an end-to-end demo of Keyword Spotting model on Azure Sphere. We implemented audio pre-processing and microhpnone interface on Cortex-M4 as a [partner application](https://github.com/octoml/azsphere-mic) and TVM on Cortex-A7.
 
 1. Connect a Microphone with analog interface to Azure Sphere ADC interface (we used [MAX4466](https://www.adafruit.com/product/1063)). Follow instruction from the partner App.
