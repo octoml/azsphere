@@ -71,7 +71,7 @@ $ make program
 ```
 In following subsection, we explain how we achieve this deployment in more details.
 
-### Importing KWS, Quantization and Accuracy
+### Importing KWS, Quantization and Accuracy Test
 KWS models are originally developed in Tensorflow. Here we focus on [DS-CNN pre-trained models](https://github.com/ARM-software/ML-KWS-for-MCU/tree/master/Pretrained_models/DS_CNN) provided by ARM. To import the model and perform Relay quantization, run this command. This will save the relay module as a pickle file which we can use to build the runtime.
 ```bash
 python3 -m model.kws.kws --export --quantize --global-scale 4.0 -o build
@@ -107,6 +107,8 @@ INFO: sample audio file used: python/model/kws/samples/silence.wav
 INFO: keyword_data.bin saved!
 INFO: keyword_output.bin saved!
 ```
+
+### Auto-tuning
 
 ## Real-time Demo
 We deployed an end-to-end demo of Keyword Spotting model on Azure Sphere. We implemented audio pre-processing and microhpnone interface on Cortex-M4 as a [partner application](https://github.com/octoml/azsphere-mic) and TVM on Cortex-A7.
