@@ -71,7 +71,7 @@ $ make program
 ```
 In following subsection, we explain how we achieve this deployment in more details.
 
-### Importing KWS, Quantization and Accuracy
+### Importing KWS, Quantization and Accuracy Test
 KWS models are originally developed in Tensorflow. Here we focus on [DS-CNN pre-trained models](https://github.com/ARM-software/ML-KWS-for-MCU/tree/master/Pretrained_models/DS_CNN) provided by ARM. To import the model and perform Relay quantization, run this command. This will save the relay module as a pickle file which we can use to build the runtime.
 ```bash
 python3 -m model.kws.kws --export --quantize --global-scale 4.0 -o build
@@ -107,6 +107,29 @@ INFO: sample audio file used: python/model/kws/samples/silence.wav
 INFO: keyword_data.bin saved!
 INFO: keyword_output.bin saved!
 ```
+
+### Auto-tuning
+
+## Real-time Demo
+We deployed an end-to-end demo of Keyword Spotting model on Azure Sphere. We implemented audio pre-processing and microhpnone interface on Cortex-M4 as a [partner application](https://github.com/octoml/azsphere-mic) and TVM on Cortex-A7.
+
+1. Connect a Microphone with analog interface to Azure Sphere ADC interface (we used [MAX4466](https://www.adafruit.com/product/1063)). Follow instruction from the partner App.
+   - **NOTE:** if you don't have a microphone, you can deploy ```DEMO1``` from partner app which reads pre-recorded data from memory.
+2. Deploy [partner App](https://github.com/octoml/azsphere-mic) on Azure Sphere.
+3. Deploy this application:
+   ```
+   make cleanall
+   make kws_demo
+   make program
+   ```
+4. If you push ```button B```, it acquires one second speech from microphone and shows the result label on four LEDs. Here are the LED colors for each label.
+
+   Label | Yes | No | Up | Down | Left | Right
+   --- | --- | --- | --- |--- |--- |---
+   LEDs | :black_circle::black_circle::green_heart::green_heart: | :black_circle::black_circle::red_circle::red_circle: | :black_circle::black_circle::green_heart::black_circle: | :black_circle::black_circle::large_blue_circle::black_circle: | :white_circle::black_circle::black_circle::black_circle: | :black_circle::black_circle::black_circle::white_circle:
+   **Label** | **On** | **Off** | **Stop** | **Go** | **Silence** | **Unknown**
+   LEDs | :white_circle::black_circle::white_circle::white_circle: | :red_circle::black_circle::black_circle::black_circle: | :red_circle::black_circle::red_circle::red_circle: | :green_heart::black_circle::green_heart::green_heart: | :black_circle::black_circle::black_circle::large_blue_circle: | :black_circle::black_circle::black_circle::green_heart:
+
 ## References
 Here are some of the references used in this project:
 
