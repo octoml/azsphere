@@ -1,0 +1,13 @@
+{
+  "SchemaVersion": 1,
+  "Name": "azsphere_mic",
+  "ComponentId": "18b8807b-541b-4953-8c9f-9135eedcc376",
+  "EntryPoint": "/bin/app",
+  "CmdArgs": [],
+  "Capabilities": {
+    "Gpio": [ 13, 15, 60 ],
+    "Adc": [ "ADC-CONTROLLER-0" ],
+    "AllowedApplicationConnections": [ "1689d8b2-c835-2e27-27ad-e894d6d15fa9" ]
+  },
+  "ApplicationType": "RealTimeCapable"
+}
