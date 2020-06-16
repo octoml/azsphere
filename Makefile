@@ -55,7 +55,7 @@ cifar: $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifa
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DCIFAR=ON && ninja
 
-keyword: $(build_dir)/keyword_model.o
+kws: $(build_dir)/keyword_model.o
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DKEYWORD=ON && ninja
 
@@ -77,7 +77,8 @@ $(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_param
 	# --quantize
 
 $(build_dir)/keyword_model.o: python/build_model.py
-	python3 $< -o $(build_dir) --keyword --tuned python/tuning/kws/kws_conv_notquantized_footprint.txt --module python/model/kws/saved/module_gs_4.0_conv_notquantized.pickle
+	python3 $< -o $(build_dir) --keyword --tuned python/tuning/kws/kws_conv_notquantized_runtime.txt --module python/model/kws/saved/module_gs_4.0_conv_notquantized.pickle
+
 
 $(build_dir)/id.bin: python/build_model.py
 	python3 $< -o $(build_dir) --id
