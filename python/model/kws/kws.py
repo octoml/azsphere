@@ -123,13 +123,24 @@ def export_module(opts):
             with open(os.path.join(build_dir, f'{model_name}_mod_quantized.log'), 'w') as mod_log:
                 mod_log.write(str(mod))
 
+    #save module
     if opts.quantize:
-        #save module
         file_path = f'{build_dir}/module_gs_{global_scale}.pickle'
         with open(file_path, 'wb') as h1:
             pickle.dump(mod, h1, protocol=pickle.HIGHEST_PROTOCOL)
             print(f'INFO: {file_path} saved!')
         with open(f'{build_dir}/module_gs_{global_scale}.txt', 'w') as f:
+            f.write(mod.astext())
+    else:
+        file_path = f'{build_dir}/module.pickle'
+        with open(file_path, 'wb') as h1:
+            pickle.dump(mod, h1, protocol=pickle.HIGHEST_PROTOCOL)
+            print(f'INFO: {file_path} saved!')
+        param_path = f'{build_dir}/params.bin'
+        with open(param_path, 'wb') as f_params:
+            f_params.write(relay.save_param_dict(params))
+            print(f'INFO: {param_path} saved!')
+        with open(f'{build_dir}/module.txt', 'w') as f:
             f.write(mod.astext())
     return mod, params
 
@@ -217,9 +228,14 @@ def test_sample(target, filepath):
 def test_accuracy(opts, target):
     with open(opts.module, 'rb') as handle:
         mod = pickle.load(handle)
+
+    params_data = None
+    if not opts.quantize:
+        with open(opts.params, 'rb') as f_params:
+            params_data = relay.load_param_dict(f_params.read())
     
     lib, graph, out_params = build(opts, mod=mod, 
-                                   params=None, target=target)
+                                   params=params_data, target=target)
     ctx = tvm.context(target, 0)
     m = tvm.contrib.graph_runtime.create(graph, lib, ctx)
 
@@ -300,6 +316,7 @@ if __name__ == '__main__':
     parser.add_argument('--target', default='llvm --system-lib')
     parser.add_argument('--test', action=None, help="Test accuracy of the model with num of samples")
     parser.add_argument('--module', default=None, help="Path to the Relay module pickle file")
+    parser.add_argument('--params', default=None, help="Path to the Relay params file")
     parser.add_argument('--debug', action='store_true', help="Save debugging files")
     parser.add_argument('--wav', default='', help="WAV test file")
 
