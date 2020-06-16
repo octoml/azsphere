@@ -243,6 +243,11 @@ def build_keyword_model(opts):
     mod = get_module(opts.module)
     print(mod)
     
+    params_data = None
+    if opts.params:
+        with open(opts.params, 'rb') as f_param:
+            params_data = relay.load_param_dict(f_param.read())
+
     print("Compile...")
     if opts.tuned:
         history_file = opts.tuned
@@ -250,12 +255,12 @@ def build_keyword_model(opts):
         with autotvm.apply_history_best(history_file):
             with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
-                    mod, target=TARGET)
+                    mod, target=TARGET, params=params_data)
     else:
         print("INFO: No Tuning!")
         with relay.build_config(opt_level=3):
                 graph, lib, out_params = relay.build_module.build(
-                    mod, target=TARGET)
+                    mod, target=TARGET, params=params_data)
 
     #save model, graph, params
     model_name = 'keyword'
@@ -475,6 +480,7 @@ if __name__ == '__main__':
     parser.add_argument('--keyword', action='store_true')
     parser.add_argument('--tuned', default=None, help="Use schedule log file to build")
     parser.add_argument('--module', default=None, help="Relay module as a pickle file")
+    parser.add_argument('--params', default=None, help="Relay params as a binary file")
     parser.add_argument('--id', action='store_true')
     opts = parser.parse_args()
     
