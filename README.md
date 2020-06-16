@@ -66,7 +66,7 @@ We deploy KWS, a tensorflow model developed by ARM, on Azure Sphere Cortex-A7 co
 ```bash
 $ make delete_a7
 $ make cleanall
-$ make keyword
+$ make kws
 $ make program
 ```
 In following subsection, we explain how we achieve this deployment in more details.
