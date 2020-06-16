@@ -1,6 +1,6 @@
 ## Overview
 
-This application is a part of the TVM demo on [MT3620 Azure Sphere](https://azure.microsoft.com/en-us/services/azure-sphere/get-started/). In our TVM demo, we deploy a [DS-CNN Keyword Spotting](https://github.com/ARM-software/ML-KWS-for-MCU) model on Azure Sphere for the first time using [Apache TVM](https://tvm.apache.org/). This model has two steps; the first step pre-processes the audio to extract MFCC features and second part runs processed audio through a DS-CNN model. We deploy feature extraction on Cortex-M4 core on Azure Sphere and DS-CNN model inference on Cortex-A7. To run this demo, you need to deploy this application and the [partner application](https://github.com/octoml/azsphere) which implements the TVM runtime.
+This application is a part of the TVM demo on [MT3620 Azure Sphere](https://azure.microsoft.com/en-us/services/azure-sphere/get-started/). In our TVM demo, we deploy a [DS-CNN Keyword Spotting](https://github.com/ARM-software/ML-KWS-for-MCU) model on Azure Sphere for the first time using [Apache TVM](https://tvm.apache.org/). This model has two steps; the first step pre-processes the audio to extract MFCC features and second part runs processed audio through a DS-CNN model. We deploy feature extraction on Cortex-M4 core on Azure Sphere and DS-CNN model TVM runtime on Cortex-A7. To run this demo, you need to deploy this application and the [partner application](https://github.com/octoml/azsphere).
 
 This repository showcases the audio pre-processing part of DS-CNN model on Cortex-M4. We present two demos here:
 * Demo1: We use pre-recorded audio files and perform pre-processing.
@@ -21,10 +21,9 @@ This repository showcases the audio pre-processing part of DS-CNN model on Corte
 - Tensorflow
 
 ## Getting Started
-1. Clone this repository (Use ```git clone recursive``` to clone the submodules)
-2. Follow these to build the application. Note that there are multiple WAV file under [data](./data) that you can try.
+1. Follow these to build the application. Note that there are multiple WAV file under [data](./data) that you can try.
 ```bash
-$ cd ~/azsphere-mic
+$ cd ~/azsphere/apps/kws_mic
 $ make clean
 (Only DEMO1) => $ python3 python/mfcc.py -f (choose a WAV file)
 $ make demo1(demo2)
@@ -35,9 +34,9 @@ $ make demo1(demo2)
     - H3.3 (3.3) -> VCC
 4. Follow these to connect and flash this app on device. You need ```sudo``` access to connect to the device.
 ```bash
-cd ~/azsphere-mic
-make connect
-make program
+$ cd ~/azsphere/apps/kws_mic
+$ make connect
+$ make program
 ```
 5. Now, if you push button B on Azure Sphere the Cortex-M4 extracts the feature of audio samples and sends it to the Cortex-A7. If you already deployed the partner application, you will see change in LED colors.
 
