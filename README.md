@@ -1,5 +1,5 @@
 ## Overview
-![Azure Sphere Board Demo](./images/kws_demo.jpg)
+<img src="./images/kws_demo.jpg" alt="Azure Sphere Demo" width="321" height="300" align="right"/>
 
 We show machine learning model deployment on [MT3620 Azure Sphere](https://azure.microsoft.com/en-us/services/azure-sphere/get-started/) using [Apache TVM](https://tvm.apache.org/). We show multiple deployments from a simple ```a + b``` example to a ```Conv2D``` operation and finally we deploy [Keyword Spotting](https://github.com/ARM-software/ML-KWS-for-MCU) model developed by ARM.
 
