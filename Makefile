@@ -71,14 +71,8 @@ $(build_dir)/test_model.o: python/build_model.py
 $(build_dir)/conv2d_model.o: python/build_model.py
 	python3 $< -o $(build_dir) --conv2d
 
-$(build_dir)/cifar_model.o $(build_dir)/cifar_graph.bin $(build_dir)/cifar_params.bin $(build_dir)/cifar_data.bin $(build_dir)/cifar_output.bin: build_model.py
-	python3 $< -o $(build_dir) --cifar
-	# --tuned
-	# --quantize
-
 $(build_dir)/keyword_model.o: python/build_model.py
 	python3 $< -o $(build_dir) --keyword --tuned python/tuning/kws/kws_conv_notquantized_runtime.txt --module python/model/kws/saved/module_gs_4.0_conv_notquantized.pickle
-
 
 $(build_dir)/id.bin: python/build_model.py
 	python3 $< -o $(build_dir) --id
