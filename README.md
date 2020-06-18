@@ -117,8 +117,8 @@ We deployed an end-to-end demo of Keyword Spotting model on Azure Sphere. We imp
 
 1. Connect a Microphone with analog interface to Azure Sphere ADC interface (we used [MAX4466](https://www.adafruit.com/product/1063)). Follow instruction from the partner App.
    - **NOTE:** if you don't have a microphone, you can deploy ```DEMO1``` from partner app which reads pre-recorded data from memory.
-2. Deploy [partner App](./apps/kws_mic) on Azure Sphere.
-3. Deploy this application:
+2. Follow the steps in [apps/kws_mic/README.md](./apps/kws_mic/README.md) to deploy partner app on Cortex-M4. You can choose ```DEMO1``` (pre-loaded .wav file) or ```DEMO2``` (recorded live from microphone).
+3. Deploy the TVM runtime application on Cortex-A7:
    ```
    make cleanall
    make kws_demo
