@@ -16,12 +16,12 @@ This repository showcases the audio pre-processing part of DS-CNN model on Corte
 ## Software Requirements
 - Linux with Azure Sphere SDK (follow [Azure Sphere documentation](https://docs.microsoft.com/en-us/azure-sphere/) to setup SDK and device)
 - [Install GNU ARM Embedded Toolchain 9.2.1.](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads)
-    - Make sure to export ```ARM_GNU_PATH="PATH/to/GCC/ARM/none/eabi/bin"``` in your environment.
 - Python 3.6+
 - Tensorflow
 
 ## Getting Started
-1. Follow these to build the application. Note that there are multiple WAV file under [data](./data) that you can try.
+1. Export ```ARM_GNU_PATH="PATH/to/GCC/ARM/none/eabi/bin"``` in your environment.
+2. Follow these to build the application. Note that there are multiple WAV file under [data](./data) that you can try.
 ```bash
 $ cd ~/azsphere/apps/kws_mic
 $ make clean
