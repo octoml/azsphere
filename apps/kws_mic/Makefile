@@ -62,6 +62,24 @@ demo2:
 	@mkdir -p $(build_dir)
 	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DDEMO2=ON && ninja -v
 
+test: $(build_dir)/test_model.o $(build_dir)/test_graph.json.c $(build_dir)/test_params.bin.c
+	@mkdir -p $(build_dir)
+	cd $(build_dir) && cmake $(CMAKE_FLAGS) -DTEST=ON && ninja -v
+############################################################################
+# build model
+############################################################################
+$(build_dir)/test_model.o $(build_dir)/test_params.bin $(build_dir)/test_graph.json: python/build_model.py
+	python3 $< -o $(build_dir) --test
+
+############################################################################
+# Serialize
+############################################################################
+$(build_dir)/test_params.bin.c: $(build_dir)/test_params.bin
+	xxd -i $^  > $@
+
+$(build_dir)/test_graph.json.c: $(build_dir)/test_graph.json
+	xxd -i $^  > $@
+
 clean:
 	rm -rf ${build_dir}
 
